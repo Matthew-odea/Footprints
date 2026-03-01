@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "es2017",
+        "lib": ["es2020", "dom"],
+        "jsx": "react-jsx",
+        "moduleResolution": "bundler",
+        "module": "esnext",
+        "strict": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "types": ["jest", "react", "react-native"]
+    },
+    "include": ["App.tsx", "src", "jest.setup.ts"]
+}
