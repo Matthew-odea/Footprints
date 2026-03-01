@@ -1,0 +1,49 @@
+from functools import lru_cache
+
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.core.config import get_settings
+from app.core.security import AuthError, decode_access_token
+from app.repositories.storage import DataStore, DynamoDataStore, MemoryDataStore
+from app.services.auth_service import AuthService
+from app.services.completion_service import CompletionService
+from app.services.prompt_service import PromptService
+from app.services.user_service import UserService
+
+security_scheme = HTTPBearer(auto_error=False)
+
+
+@lru_cache
+def get_store() -> DataStore:
+    settings = get_settings()
+    if settings.storage_backend.lower() == "dynamodb":
+        return DynamoDataStore(settings=settings)
+    return MemoryDataStore()
+
+
+def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+) -> str:
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        return decode_access_token(credentials.credentials)
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+def get_auth_service(store: DataStore = Depends(get_store)) -> AuthService:
+    return AuthService(store=store)
+
+
+def get_prompt_service(store: DataStore = Depends(get_store)) -> PromptService:
+    return PromptService(store=store)
+
+
+def get_completion_service(store: DataStore = Depends(get_store)) -> CompletionService:
+    return CompletionService(store=store)
+
+
+def get_user_service(store: DataStore = Depends(get_store)) -> UserService:
+    return UserService(store=store)
