@@ -1,0 +1,60 @@
+name: Deploy API Prod
+
+on:
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    AWS_REGION: us-east-1
+  PROD_API_HEALTHCHECK_URL: ''
+
+jobs:
+    deploy-prod:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Detect API service
+              id: check
+              shell: bash
+              run: |
+                  if [ -d "services/api" ]; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                    echo "::notice::services/api not found, skipping deploy."
+                  fi
+
+            - name: Setup Python
+              if: steps.check.outputs.exists == 'true'
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+
+            - name: Deploy API to prod
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              run: |
+                  if [ -f infra/scripts/deploy-api-prod.sh ]; then
+                    bash infra/scripts/deploy-api-prod.sh
+                  else
+                    echo "::warning::No infra/scripts/deploy-api-prod.sh found. Add this script to perform your real deploy."
+                  fi
+
+            - name: Prod smoke test
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              run: |
+                  if [ -n "${PROD_API_HEALTHCHECK_URL}" ]; then
+                    curl -fsSL "${PROD_API_HEALTHCHECK_URL}"
+                  else
+                    echo "::notice::PROD_API_HEALTHCHECK_URL not set, skipping smoke test."
+                  fi

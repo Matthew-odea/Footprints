@@ -1,0 +1,67 @@
+name: Mobile Release Build
+
+on:
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+
+jobs:
+    release-mobile:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Detect mobile app
+              id: check
+              shell: bash
+              run: |
+                  if [ -d "apps/mobile" ]; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                    echo "::notice::apps/mobile not found, skipping mobile release build."
+                  fi
+
+            - name: Setup Node
+              if: steps.check.outputs.exists == 'true'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: npm
+                  cache-dependency-path: apps/mobile/package-lock.json
+
+            - name: Install dependencies
+              if: steps.check.outputs.exists == 'true'
+              working-directory: apps/mobile
+              run: npm ci
+
+            - name: Build production binaries
+              if: steps.check.outputs.exists == 'true'
+              working-directory: apps/mobile
+              shell: bash
+              run: |
+                  if [ -z "${EXPO_TOKEN:-}" ]; then
+                    echo "::warning::EXPO_TOKEN is not configured in runner environment. Skipping release build."
+                    exit 0
+                  fi
+                  npm install -g eas-cli
+                  eas build --platform all --profile production --non-interactive
+
+            - name: Optional submit to stores
+              if: steps.check.outputs.exists == 'true'
+              working-directory: apps/mobile
+              shell: bash
+              run: |
+                  if [ -z "${EXPO_TOKEN:-}" ]; then
+                    echo "::notice::EXPO_TOKEN not present, skipping submit."
+                    exit 0
+                  fi
+                  if [ "${EXPO_ENABLE_SUBMIT:-false}" != "true" ]; then
+                    echo "::notice::EXPO_ENABLE_SUBMIT is not true, skipping submit."
+                    exit 0
+                  fi
+                  npm install -g eas-cli
+                  eas submit --platform all --profile production --non-interactive

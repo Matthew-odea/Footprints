@@ -1,0 +1,63 @@
+name: Deploy API Dev
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - services/api/**
+            - infra/**
+            - .github/workflows/deploy-api-dev.yml
+    workflow_dispatch:
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    AWS_REGION: us-east-1
+  DEV_API_HEALTHCHECK_URL: ''
+
+jobs:
+    deploy-dev:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Detect API service
+              id: check
+              shell: bash
+              run: |
+                  if [ -d "services/api" ]; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                    echo "::notice::services/api not found, skipping deploy."
+                  fi
+
+            - name: Setup Python
+              if: steps.check.outputs.exists == 'true'
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+
+            - name: Deploy API to dev
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              run: |
+                  if [ -f infra/scripts/deploy-api-dev.sh ]; then
+                    bash infra/scripts/deploy-api-dev.sh
+                  else
+                    echo "::warning::No infra/scripts/deploy-api-dev.sh found. Add this script to perform your real deploy."
+                  fi
+
+            - name: Dev smoke test
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              run: |
+                  if [ -n "${DEV_API_HEALTHCHECK_URL}" ]; then
+                    curl -fsSL "${DEV_API_HEALTHCHECK_URL}"
+                  else
+                    echo "::notice::DEV_API_HEALTHCHECK_URL not set, skipping smoke test."
+                  fi

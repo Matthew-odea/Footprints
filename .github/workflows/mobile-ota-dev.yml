@@ -1,0 +1,53 @@
+name: Mobile OTA Dev
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - apps/mobile/**
+            - .github/workflows/mobile-ota-dev.yml
+    workflow_dispatch:
+
+jobs:
+    ota-dev:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Detect mobile app
+              id: check
+              shell: bash
+              run: |
+                  if [ -d "apps/mobile" ]; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                    echo "::notice::apps/mobile not found, skipping OTA update."
+                  fi
+
+            - name: Setup Node
+              if: steps.check.outputs.exists == 'true'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: npm
+                  cache-dependency-path: apps/mobile/package-lock.json
+
+            - name: Install dependencies
+              if: steps.check.outputs.exists == 'true'
+              working-directory: apps/mobile
+              run: npm ci
+
+            - name: Setup Expo and publish OTA
+              if: steps.check.outputs.exists == 'true'
+              working-directory: apps/mobile
+              shell: bash
+              run: |
+                  if [ -z "${EXPO_TOKEN:-}" ]; then
+                    echo "::warning::EXPO_TOKEN is not configured in runner environment. Skipping OTA publish."
+                    exit 0
+                  fi
+                  npm install -g eas-cli
+                  eas update --branch dev --non-interactive --auto --message "Dev OTA from ${GITHUB_SHA}"
