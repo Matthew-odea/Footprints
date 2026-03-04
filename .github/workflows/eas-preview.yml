@@ -41,14 +41,14 @@ jobs:
 
       - name: Build preview for iOS
         id: ios-build
-        run: cd apps/mobile && eas build --platform ios --distribution preview --non-interactive
+        run: cd apps/mobile && eas build --platform ios --profile preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         continue-on-error: true
 
       - name: Build preview for Android
         id: android-build
-        run: cd apps/mobile && eas build --platform android --distribution preview --non-interactive
+        run: cd apps/mobile && eas build --platform android --profile preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         continue-on-error: true
