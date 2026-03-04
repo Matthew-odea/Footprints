@@ -39,58 +39,7 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build preview for iOS
-        id: ios-build
-        run: cd apps/mobile && eas build --platform ios --profile preview --non-interactive
+      - name: Build on EAS
+        run: cd apps/mobile && eas build --platform all --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        continue-on-error: true
-
-      - name: Build preview for Android
-        id: android-build
-        run: cd apps/mobile && eas build --platform android --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        continue-on-error: true
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const iOS = ${{ steps.ios-build.outcome == 'success' }};
-            const Android = ${{ steps.android-build.outcome == 'success' }};
-            
-            let message = '🚀 **EAS Preview Build**\n\n';
-            
-            if (iOS) {
-              message += '✅ **iOS**: Build successful\n';
-            } else {
-              message += '❌ **iOS**: Build failed\n';
-            }
-            
-            if (Android) {
-              message += '✅ **Android**: Build successful\n';
-            } else {
-              message += '❌ **Android**: Build failed\n';
-            }
-            
-            message += '\n📲 **To test:** Open [EAS Dashboard](https://expo.dev/build-details) and scan the QR code with Expo Go\n';
-            message += '**API**: https://9fal46jhxe.execute-api.us-east-1.amazonaws.com\n';
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            });
-
-      - name: Build status
-        run: |
-          if [ ${{ steps.ios-build.outcome }} == 'success' ] || [ ${{ steps.android-build.outcome }} == 'success' ]; then
-            echo "✅ At least one platform built successfully"
-            exit 0
-          else
-            echo "❌ Both platforms failed"
-            exit 1
-          fi
