@@ -5,6 +5,21 @@
         "version": "0.1.0",
         "orientation": "portrait",
         "platforms": ["ios", "android"],
-        "assetBundlePatterns": ["**/*"]
+        "icon": "./assets/icon.png",
+        "splash": {
+            "image": "./assets/splash.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
+        "assetBundlePatterns": ["**/*"],
+        "ios": {
+            "supportsTabletMode": true
+        },
+        "android": {
+            "package": "com.footprints.app"
+        },
+        "extra": {
+            "apiUrl": "https://9fal46jhxe.execute-api.us-east-1.amazonaws.com"
+        }
     }
 }

@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Footprints FastAPI Lambda deployment
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        STORAGE_BACKEND: dynamodb
+        API_DYNAMODB_TABLE_CORE: footprints_core
+        API_S3_BUCKET: footprints-dev-completions
+        API_S3_COMPLETIONS_PREFIX: completions/
+        JWT_SECRET: change-me
+        JWT_ALGORITHM: HS256
+        JWT_EXP_MINUTES: '1440'
+
+Resources:
+  FootprintsApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler.handler
+      Runtime: python3.13
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: footprints_core
+        - S3CrudPolicy:
+            BucketName: footprints-dev-completions
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: '2.0'
+            Path: /{proxy+}
+            Method: ANY
+        RootApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com'

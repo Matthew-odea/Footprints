@@ -1,0 +1,115 @@
+name: EAS Preview Build & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/eas-preview.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'apps/mobile/package-lock.json'
+
+      - name: Install root dependencies
+        run: npm install --prefix . --no-save
+
+      - name: Install mobile dependencies
+        run: cd apps/mobile && npm install
+
+      - name: Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          eas-version: latest
+
+      - name: Verify Expo login
+        run: eas whoami
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build preview for iOS
+        id: ios-build
+        run: cd apps/mobile && eas build --platform ios --distribution preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        continue-on-error: true
+
+      - name: Build preview for Android
+        id: android-build
+        run: cd apps/mobile && eas build --platform android --distribution preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        continue-on-error: true
+
+      - name: Comment on PR/Commit
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const iOS = ${{ steps.ios-build.outcome == 'success' }};
+            const Android = ${{ steps.android-build.outcome == 'success' }};
+            
+            let message = '🚀 **EAS Preview Build Complete**\n\n';
+            
+            if (iOS) {
+              message += '✅ **iOS**: Build successful\n';
+            } else {
+              message += '❌ **iOS**: Build failed or in progress\n';
+            }
+            
+            if (Android) {
+              message += '✅ **Android**: Build successful\n';
+            } else {
+              message += '❌ **Android**: Build failed or in progress\n';
+            }
+            
+            message += '\n📲 **To test:**\n';
+            message += '1. Install [Expo Go](https://expo.dev/tools) on your iOS/Android device\n';
+            message += '2. Open the build link from EAS Dashboard: https://expo.dev/build-details\n';
+            message += '3. Scan the QR code with Expo Go\n';
+            message += '\n**API Endpoint**: https://9fal46jhxe.execute-api.us-east-1.amazonaws.com\n';
+            
+            if (context.issue.number) {
+              // PR comment
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            } else if (context.eventName === 'push') {
+              // Commit comment
+              github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: message
+              });
+            }
+
+      - name: Build status
+        run: |
+          if [ ${{ steps.ios-build.outcome }} == 'success' ] || [ ${{ steps.android-build.outcome }} == 'success' ]; then
+            echo "✅ At least one platform built successfully"
+            exit 0
+          else
+            echo "❌ Both platforms failed"
+            exit 1
+          fi

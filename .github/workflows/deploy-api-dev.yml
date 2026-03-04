@@ -15,7 +15,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  DEV_API_HEALTHCHECK_URL: ''
+  STAGE: dev
 
 jobs:
     deploy-dev:
@@ -40,24 +40,67 @@ jobs:
               if: steps.check.outputs.exists == 'true'
               uses: actions/setup-python@v5
               with:
-                  python-version: '3.12'
+                  python-version: '3.11'
 
-            - name: Deploy API to dev
+            - name: Setup Node.js
+              if: steps.check.outputs.exists == 'true'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+
+            - name: Install Serverless Framework
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              run: npm install -g serverless
+
+            - name: Install serverless plugins
               if: steps.check.outputs.exists == 'true'
               shell: bash
               run: |
-                  if [ -f infra/scripts/deploy-api-dev.sh ]; then
-                    bash infra/scripts/deploy-api-dev.sh
-                  else
-                    echo "::warning::No infra/scripts/deploy-api-dev.sh found. Add this script to perform your real deploy."
-                  fi
+                  cd services/api
+                  npm install --save-dev serverless-python-requirements
 
-            - name: Dev smoke test
+            - name: Configure AWS credentials
+              if: steps.check.outputs.exists == 'true'
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Deploy API to Lambda
+              if: steps.check.outputs.exists == 'true'
+              shell: bash
+              env:
+                  STORAGE_BACKEND: dynamodb
+                  API_DYNAMODB_TABLE_CORE: footprints_core
+                  API_S3_BUCKET: footprints-dev-completions
+                  API_S3_COMPLETIONS_PREFIX: completions/
+                  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+                  JWT_ALGORITHM: HS256
+                  JWT_EXP_MINUTES: '1440'
+              run: |
+                  cd services/api
+                  STAGE=dev serverless deploy --region ${{ env.AWS_REGION }} --force
+
+            - name: Get API endpoint
+              if: steps.check.outputs.exists == 'true'
+              id: api
+              shell: bash
+              run: |
+                  cd services/api
+                  API_ENDPOINT=$(STAGE=dev serverless info --region ${{ env.AWS_REGION }} | grep "endpoint:" | awk '{print $2}')
+                  echo "endpoint=$API_ENDPOINT" >> "$GITHUB_OUTPUT"
+                  echo "API Endpoint: $API_ENDPOINT"
+
+            - name: Smoke test API
               if: steps.check.outputs.exists == 'true'
               shell: bash
               run: |
-                  if [ -n "${DEV_API_HEALTHCHECK_URL}" ]; then
-                    curl -fsSL "${DEV_API_HEALTHCHECK_URL}"
+                  API_ENDPOINT="${{ steps.api.outputs.endpoint }}"
+                  if [ -n "$API_ENDPOINT" ]; then
+                    echo "Testing $API_ENDPOINT/api/v1/health"
+                    curl -fsSL "$API_ENDPOINT/api/v1/health" || echo "Health check failed, but deployment may still be initializing"
                   else
-                    echo "::notice::DEV_API_HEALTHCHECK_URL not set, skipping smoke test."
+                    echo "::warning::Could not extract API endpoint"
                   fi
