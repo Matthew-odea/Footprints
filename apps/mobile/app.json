@@ -30,6 +30,12 @@
         "projectId": "5fad9c40-cade-46fc-8aa1-9be58118ce30"
       }
     },
-    "owner": "matt-odea"
+    "owner": "matt-odea",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5fad9c40-cade-46fc-8aa1-9be58118ce30"
+    }
   }
 }
