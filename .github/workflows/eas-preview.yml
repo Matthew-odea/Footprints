@@ -39,7 +39,7 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build on EAS
-        run: cd apps/mobile && eas build --platform all --non-interactive --no-wait
+      - name: Build on EAS (Android only)
+        run: cd apps/mobile && eas build --platform android --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
