@@ -24,10 +24,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: 'apps/mobile/package-lock.json'
-
-      - name: Install root dependencies
-        run: npm install --prefix . --no-save
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install mobile dependencies
         run: cd apps/mobile && npm install
