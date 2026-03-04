@@ -1,0 +1,33 @@
+Metadata-Version: 2.4
+Name: footprints-api
+Version: 0.1.0
+Summary: Footprints FastAPI backend
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.116.0
+Requires-Dist: uvicorn[standard]>=0.35.0
+Requires-Dist: pydantic-settings>=2.10.0
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: boto3>=1.39.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4.0; extra == "dev"
+Requires-Dist: httpx>=0.28.0; extra == "dev"
+Requires-Dist: ruff>=0.12.0; extra == "dev"
+Requires-Dist: mypy>=1.17.0; extra == "dev"
+
+# Footprints API
+
+## Run locally
+
+```bash
+python3 -m pip install -e ".[dev]"
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Useful scripts
+
+```bash
+python3 scripts/seed_prompts.py
+python3 scripts/reset_dev_data.py
+python3 scripts/export_openapi.py
+```

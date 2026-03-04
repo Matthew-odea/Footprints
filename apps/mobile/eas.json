@@ -1,5 +1,4 @@
 {
-  "projectId": "footprints-mobile-preview",
   "cli": {
     "version": ">= 9.0.0",
     "appVersionSource": "local"
