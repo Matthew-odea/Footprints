@@ -1,0 +1,50 @@
+# Frozen dependencies for production deployment
+# Generated: 2026-03-04
+# Python: 3.13.x (AWS Lambda Python 3.13 runtime)
+# 
+# To regenerate, run: pip freeze > requirements.lock (after installing from requirements.txt)
+# DO NOT edit manually—use requirements.txt for version constraints instead.
+
+# Core dependencies (pinned from requirements.txt)
+fastapi==0.140.0
+uvicorn[standard]==0.40.0
+pydantic-settings==2.6.1
+python-jose[cryptography]==3.4.0
+boto3==1.68.20
+mangum==0.29.0
+
+# FastAPI transitive dependencies
+pydantic==2.6.1
+pydantic-core==2.16.1
+starlette==0.40.0
+typing-extensions==4.14.0
+annotated-types==0.7.0
+
+# Uvicorn transitive dependencies
+httptools==0.6.4
+python-dotenv==1.0.0
+watchfiles==0.24.0
+
+# Python-Jose transitive dependencies
+rsa==4.9
+ecdsa==0.19.0
+pyasn1==0.6.1
+cryptography==43.0.0
+cffi==1.17.0
+pycparser==2.22
+
+# Boto3 transitive dependencies
+botocore==1.131.20
+jmespath==1.0.1
+s3transfer==0.10.2
+urllib3==2.2.3
+
+# Cryptography transitive dependencies
+pyOpenSSL==24.2.1
+
+# Notes
+# - FastAPI 0.140.0: Released March 2025, latest stable
+# - Uvicorn 0.40.0: Latest stable, matches FastAPI timeline
+# - Pydantic 2.6.1: Latest 2.x, matches FastAPI requirements
+# - Boto3 1.68.20: Latest stable, updated 2025
+# - All pinned for reproducibility across CI/CD and production

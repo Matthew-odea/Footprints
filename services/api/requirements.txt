@@ -1,6 +1,6 @@
-fastapi>=0.116.0
-uvicorn[standard]>=0.35.0
-pydantic-settings>=2.10.0
-python-jose[cryptography]>=3.3.0
-boto3>=1.39.0
-mangum>=0.17.0
+fastapi==0.140.0
+uvicorn[standard]==0.40.0
+pydantic-settings==2.6.1
+python-jose[cryptography]==3.4.0
+boto3==1.68.20
+mangum==0.29.0
