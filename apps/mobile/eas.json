@@ -1,11 +1,16 @@
 {
-  "builds": {
+  "build": {
     "preview": {
-      "developmentClient": false,
-      "distribution": "internal"
+      "node": "20.11.1",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
-      "distribution": "store"
+      "node": "20.11.1"
     }
   }
 }

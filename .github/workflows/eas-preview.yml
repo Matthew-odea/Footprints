@@ -53,51 +53,37 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         continue-on-error: true
 
-      - name: Comment on PR/Commit
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const iOS = ${{ steps.ios-build.outcome == 'success' }};
             const Android = ${{ steps.android-build.outcome == 'success' }};
             
-            let message = '🚀 **EAS Preview Build Complete**\n\n';
+            let message = '🚀 **EAS Preview Build**\n\n';
             
             if (iOS) {
               message += '✅ **iOS**: Build successful\n';
             } else {
-              message += '❌ **iOS**: Build failed or in progress\n';
+              message += '❌ **iOS**: Build failed\n';
             }
             
             if (Android) {
               message += '✅ **Android**: Build successful\n';
             } else {
-              message += '❌ **Android**: Build failed or in progress\n';
+              message += '❌ **Android**: Build failed\n';
             }
             
-            message += '\n📲 **To test:**\n';
-            message += '1. Install [Expo Go](https://expo.dev/tools) on your iOS/Android device\n';
-            message += '2. Open the build link from EAS Dashboard: https://expo.dev/build-details\n';
-            message += '3. Scan the QR code with Expo Go\n';
-            message += '\n**API Endpoint**: https://9fal46jhxe.execute-api.us-east-1.amazonaws.com\n';
+            message += '\n📲 **To test:** Open [EAS Dashboard](https://expo.dev/build-details) and scan the QR code with Expo Go\n';
+            message += '**API**: https://9fal46jhxe.execute-api.us-east-1.amazonaws.com\n';
             
-            if (context.issue.number) {
-              // PR comment
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: message
-              });
-            } else if (context.eventName === 'push') {
-              // Commit comment
-              github.rest.repos.createCommitComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: context.sha,
-                body: message
-              });
-            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
 
       - name: Build status
         run: |
