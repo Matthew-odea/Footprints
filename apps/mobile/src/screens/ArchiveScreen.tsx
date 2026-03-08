@@ -12,11 +12,11 @@ import {
     View,
 } from "react-native";
 
-import { getArchiveCompletions } from "../services/api";
+import { getArchiveCompletions, getFavoriteCompletions } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { CompletionItem } from "../types/api";
 
-type ViewMode = "calendar" | "timeline";
+type ViewMode = "calendar" | "timeline" | "favorites";
 
 type CalendarCell = {
     date: Date;
@@ -76,6 +76,7 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [favoriteItems, setFavoriteItems] = useState<CompletionItem[]>([]);
 
     const dateToCompletion = useMemo(() => {
         const map = new Map<string, CompletionItem>();
@@ -138,9 +139,31 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
         }
     };
 
+    const loadFavorites = async () => {
+        if (!token) {
+            return;
+        }
+
+        setLoading(true);
+        setError("");
+
+        try {
+            const completions = await getFavoriteCompletions(token);
+            setFavoriteItems(completions);
+        } catch (err) {
+            setError(String(err));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (viewMode === "calendar") {
             void loadCalendarMonth(currentMonth);
+            return;
+        }
+        if (viewMode === "favorites") {
+            void loadFavorites();
             return;
         }
         void loadTimeline(0, false);
@@ -149,6 +172,11 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
     const onRefresh = () => {
         if (viewMode === "calendar") {
             void loadCalendarMonth(currentMonth, true);
+            return;
+        }
+        if (viewMode === "favorites") {
+            setRefreshing(true);
+            void loadFavorites().finally(() => setRefreshing(false));
             return;
         }
         setRefreshing(true);
@@ -215,6 +243,14 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
                     >
                         <Text style={[styles.segmentText, viewMode === "timeline" && styles.segmentTextActive]}>
                             Timeline
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.segmentButton, viewMode === "favorites" && styles.segmentButtonActive]}
+                        onPress={() => setViewMode("favorites")}
+                    >
+                        <Text style={[styles.segmentText, viewMode === "favorites" && styles.segmentTextActive]}>
+                            Favorites
                         </Text>
                     </Pressable>
                 </View>
@@ -331,7 +367,40 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
                     onEndReached={loadMoreTimeline}
                     ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footerLoader} /> : null}
                 />
-            )}
+            ) : viewMode === "favorites" ? (
+                <FlatList
+                    data={favoriteItems}
+                    keyExtractor={(item) => item.completion_id}
+                    numColumns={2}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    renderItem={({ item }) => (
+                        <Pressable
+                            style={styles.galleryCell}
+                            onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
+                        >
+                            {item.photo_url ? (
+                                <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
+                            ) : (
+                                <View style={styles.galleryImageFallback}>
+                                    <Text style={styles.galleryFallbackText}>No Photo</Text>
+                                </View>
+                            )}
+                            <View style={styles.galleryMeta}>
+                                <Text style={styles.galleryDate}>{item.date}</Text>
+                                {item.category ? <Text style={styles.galleryCategory}>{item.category}</Text> : null}
+                                <Text style={styles.galleryPrompt} numberOfLines={1}>{item.prompt_title}</Text>
+                            </View>
+                        </Pressable>
+                    )}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No favorites yet</Text>
+                            <Text style={styles.emptySubtext}>Tap the heart icon on entries to save them here</Text>
+                        </View>
+                    }
+                    contentContainerStyle={styles.galleryList}
+                />
+            ) : null}
         </SafeAreaView>
     );
 }
@@ -473,6 +542,16 @@ const styles = StyleSheet.create({
         textAlign: "center",
         color: "#7E8A7B",
         padding: 16,
+    },
+    emptyContainer: {
+        alignItems: "center",
+        padding: 32,
+    },
+    emptySubtext: {
+        textAlign: "center",
+        color: "#9CA3AF",
+        fontSize: 14,
+        marginTop: 8,
     },
     galleryList: {
         padding: 8,

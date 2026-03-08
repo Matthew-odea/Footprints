@@ -1,4 +1,4 @@
-import { getCompletionById, listComments, createComment, deleteComment } from "../api";
+import { getCompletionById, listComments, createComment, deleteComment, addFavorite, removeFavorite, getFavoriteCompletions } from "../api";
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -200,6 +200,120 @@ describe("Entry Detail API", () => {
             });
 
             await expect(deleteComment("token-123", "comp-1", "nonexistent")).rejects.toThrow();
+        });
+    });
+
+    describe("addFavorite", () => {
+        it("adds a completion to favorites", async () => {
+            const mockResponse = {
+                status: "favorited",
+                favorite_id: "fav-1",
+            };
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+                text: async () => JSON.stringify(mockResponse),
+            });
+
+            const result = await addFavorite("token-123", "comp-1");
+
+            expect(result).toEqual(mockResponse);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining("/completions/comp-1/favorite"),
+                expect.objectContaining({
+                    method: "POST",
+                    headers: expect.objectContaining({
+                        Authorization: "Bearer token-123",
+                    }),
+                })
+            );
+        });
+    });
+
+    describe("removeFavorite", () => {
+        it("removes a completion from favorites", async () => {
+            const mockResponse = {
+                status: "unfavorited",
+            };
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockResponse,
+                text: async () => JSON.stringify(mockResponse),
+            });
+
+            const result = await removeFavorite("token-123", "comp-1");
+
+            expect(result).toEqual(mockResponse);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining("/completions/comp-1/favorite"),
+                expect.objectContaining({
+                    method: "DELETE",
+                    headers: expect.objectContaining({
+                        Authorization: "Bearer token-123",
+                    }),
+                })
+            );
+        });
+    });
+
+    describe("getFavoriteCompletions", () => {
+        it("fetches all favorite completions", async () => {
+            const mockFavorites = [
+                {
+                    completion_id: "comp-1",
+                    prompt_id: "prompt-1",
+                    prompt_title: "Plant a tree",
+                    category: "environment",
+                    note: "Planted an oak tree",
+                    date: "2026-03-08",
+                    location: "Park",
+                    photo_url: "https://example.com/photo.jpg",
+                    share_with_friends: true,
+                },
+                {
+                    completion_id: "comp-2",
+                    prompt_id: "prompt-2",
+                    prompt_title: "Clean beach",
+                    category: "environment",
+                    note: "Cleaned up trash",
+                    date: "2026-03-09",
+                    location: "Beach",
+                    photo_url: "https://example.com/photo2.jpg",
+                    share_with_friends: true,
+                },
+            ];
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockFavorites,
+                text: async () => JSON.stringify(mockFavorites),
+            });
+
+            const result = await getFavoriteCompletions("token-123");
+
+            expect(result).toEqual(mockFavorites);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining("/favorites"),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: "Bearer token-123",
+                    }),
+                })
+            );
+        });
+
+        it("returns empty array when no favorites", async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => [],
+                text: async () => "[]",
+            });
+
+            const result = await getFavoriteCompletions("token-123");
+
+            expect(result).toEqual([]);
         });
     });
 });

@@ -94,3 +94,19 @@ export type EntryDetailResponse = {
     item: CompletionItem;
     comments: CommentItem[];
 };
+
+export type FavoriteItem = {
+    favorite_id: string;
+    completion_id: string;
+    user_id: string;
+    created_at: string;
+};
+
+export type FavoriteResponse = {
+    status: string;
+    favorite_id: string;
+};
+
+export type UnfavoriteResponse = {
+    status: string;
+};

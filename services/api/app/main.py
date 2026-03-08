@@ -8,6 +8,7 @@ from app.api.v1.routes import (
     archive,
     comments,
     completions,
+    favorites,
     feed,
     friends,
     health,
@@ -92,6 +93,7 @@ app.include_router(completions.router, prefix=settings.api_prefix)
 app.include_router(history.router, prefix=settings.api_prefix)
 app.include_router(archive.router, prefix=settings.api_prefix)
 app.include_router(comments.router, prefix=settings.api_prefix)
+app.include_router(favorites.router, prefix=settings.api_prefix)
 app.include_router(uploads.router, prefix=settings.api_prefix + "/uploads")
 app.include_router(feed.router, prefix=settings.api_prefix + "/feed")
 app.include_router(friends.router, prefix=settings.api_prefix)

@@ -14,6 +14,7 @@ class MemoryDataStore(DataStore):
     completions_by_id: dict[str, dict[str, Any]] = {}  # For get_completion_by_id
     friendships: dict[str, list[dict[str, Any]]] = {}
     comments_by_completion: dict[str, list[dict[str, Any]]] = {}  # For comments
+    favorites_by_user: dict[str, list[dict[str, Any]]] = {}  # For favorites
 
     def get_or_create_user(self, username: str) -> dict[str, Any]:
         existing = self.users_by_username.get(username)
@@ -362,3 +363,49 @@ class MemoryDataStore(DataStore):
                     return True
                 return False
         return False
+
+    def create_favorite(self, completion_id: str, user_id: str) -> dict[str, Any]:
+        """Create a favorite for a completion."""
+        favorite_id = str(uuid4())
+        favorite = {
+            "favorite_id": favorite_id,
+            "completion_id": completion_id,
+            "user_id": user_id,
+            "created_at": utc_now_iso(),
+        }
+        self.favorites_by_user.setdefault(user_id, []).append(favorite)
+        return favorite
+
+    def delete_favorite(self, completion_id: str, user_id: str) -> bool:
+        """Delete a favorite. Returns True if deleted, False if not found."""
+        favorites = self.favorites_by_user.get(user_id, [])
+        for favorite in favorites:
+            if favorite["completion_id"] == completion_id:
+                favorites.remove(favorite)
+                return True
+        return False
+
+    def is_favorited(self, completion_id: str, user_id: str) -> bool:
+        """Check if a completion is favorited by user."""
+        favorites = self.favorites_by_user.get(user_id, [])
+        return any(f["completion_id"] == completion_id for f in favorites)
+
+    def get_favorite_completions(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Get all favorited completions for a user."""
+        favorites = self.favorites_by_user.get(user_id, [])
+        completion_ids = [f["completion_id"] for f in favorites]
+        
+        # Get the actual completions
+        completions = []
+        for comp_id in completion_ids:
+            completion = self.completions_by_id.get(comp_id)
+            if completion:
+                completions.append(completion)
+        
+        # Sort by created_at descending
+        completions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        
+        # Apply pagination
+        return completions[offset : offset + limit]

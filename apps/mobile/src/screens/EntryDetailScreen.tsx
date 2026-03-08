@@ -15,7 +15,7 @@ import {
     View,
 } from "react-native";
 
-import { createComment, deleteComment, getCompletionById, listComments } from "../services/api";
+import { addFavorite, createComment, deleteComment, getCompletionById, listComments, removeFavorite } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { CommentItem, CompletionItem } from "../types/api";
 
@@ -39,6 +39,8 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
     const [commentText, setCommentText] = useState("");
     const [submittingComment, setSubmittingComment] = useState(false);
     const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+    const [isFavorited, setIsFavorited] = useState(false);
+    const [togglingFavorite, setTogglingFavorite] = useState(false);
 
     const loadData = async () => {
         if (!token) {
@@ -101,6 +103,27 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
         }
     };
 
+    const handleToggleFavorite = async () => {
+        if (!token || togglingFavorite) {
+            return;
+        }
+
+        try {
+            setTogglingFavorite(true);
+            if (isFavorited) {
+                await removeFavorite(token, completionId);
+                setIsFavorited(false);
+            } else {
+                await addFavorite(token, completionId);
+                setIsFavorited(true);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update favorite");
+        } finally {
+            setTogglingFavorite(false);
+        }
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -154,7 +177,12 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
 
                             {/* Entry metadata */}
                             <View style={styles.metadata}>
-                                <Text style={styles.promptTitle}>{completion.prompt_title}</Text>
+                                <View style={styles.titleRow}>
+                                    <Text style={styles.promptTitle}>{completion.prompt_title}</Text>
+                                    <Pressable onPress={handleToggleFavorite} disabled={togglingFavorite}>
+                                        <Text style={styles.heartIcon}>{isFavorited ? "❤️" : "🤍"}</Text>
+                                    </Pressable>
+                                </View>
 
                                 <View style={styles.metadataRow}>
                                     <Text style={styles.label}>Date:</Text>
@@ -244,6 +272,16 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         marginBottom: 12,
         color: "#1F2937",
+    },
+    titleRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
+    },
+    heartIcon: {
+        fontSize: 24,
+        marginLeft: 12,
     },
     metadataRow: {
         flexDirection: "row",

@@ -4,6 +4,8 @@ import {
     CommentItem,
     CommentsListResponse,
     EntryDetailResponse,
+    FavoriteResponse,
+    UnfavoriteResponse,
     Prompt,
     TokenResponse,
     UserResponse,
@@ -144,6 +146,33 @@ export async function createComment(
 export async function deleteComment(token: string, completionId: string, commentId: string): Promise<void> {
     await request<{ status: string }>(`/api/v1/completions/${completionId}/comments/${commentId}`, {
         method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+}
+
+// Favorites
+export async function addFavorite(token: string, completionId: string): Promise<FavoriteResponse> {
+    return request<FavoriteResponse>(`/api/v1/completions/${completionId}/favorite`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+}
+
+export async function removeFavorite(token: string, completionId: string): Promise<UnfavoriteResponse> {
+    return request<UnfavoriteResponse>(`/api/v1/completions/${completionId}/favorite`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+}
+
+export async function getFavoriteCompletions(token: string): Promise<CompletionItem[]> {
+    return request<CompletionItem[]>("/api/v1/favorites", {
         headers: {
             Authorization: `Bearer ${token}`,
         },

@@ -158,3 +158,25 @@ class DataStore(ABC):
     def delete_comment(self, completion_id: str, comment_id: str, user_id: str) -> bool:
         """Delete a comment (only owner can delete). Returns True if deleted, False if not found/unauthorized."""
         raise NotImplementedError
+
+    @abstractmethod
+    def create_favorite(self, completion_id: str, user_id: str) -> dict[str, Any]:
+        """Create a favorite for a completion."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_favorite(self, completion_id: str, user_id: str) -> bool:
+        """Delete a favorite. Returns True if deleted, False if not found."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_favorited(self, completion_id: str, user_id: str) -> bool:
+        """Check if a completion is favorited by user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_favorite_completions(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Get all favorited completions for a user."""
+        raise NotImplementedError

@@ -9,6 +9,7 @@ from app.repositories.storage import DataStore, DynamoDataStore, MemoryDataStore
 from app.services.auth_service import AuthService
 from app.services.comment_service import CommentService
 from app.services.completion_service import CompletionService
+from app.services.favorite_service import FavoriteService
 from app.services.friend_service import FriendService
 from app.services.prompt_service import PromptService
 from app.services.user_service import UserService
@@ -64,3 +65,7 @@ def get_friend_service(store: DataStore = Depends(get_store)) -> FriendService:
 
 def get_comment_service(store: DataStore = Depends(get_store)) -> CommentService:
     return CommentService(store=store)
+
+
+def get_favorite_service(store: DataStore = Depends(get_store)) -> FavoriteService:
+    return FavoriteService(store=store)

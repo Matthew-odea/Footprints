@@ -645,6 +645,90 @@ class DynamoDataStore(DataStore):
         self.table.delete_item(Key={"PK": f"COMPLETION#{completion_id}", "SK": f"COMMENT#{comment_id}"})
         return True
 
+    def create_favorite(self, completion_id: str, user_id: str) -> dict[str, Any]:
+        """Create a favorite for a completion."""
+        from uuid import uuid4
+        
+        favorite_id = str(uuid4())
+        now = utc_now_iso()
+        
+        self.table.put_item(
+            Item={
+                "PK": f"USER#{user_id}",
+                "SK": f"FAVORITE#{favorite_id}",
+                "entityType": "FAVORITE",
+                "favorite_id": favorite_id,
+                "completion_id": completion_id,
+                "user_id": user_id,
+                "created_at": now,
+            }
+        )
+        
+        return {
+            "favorite_id": favorite_id,
+            "completion_id": completion_id,
+            "user_id": user_id,
+            "created_at": now,
+        }
+
+    def delete_favorite(self, completion_id: str, user_id: str) -> bool:
+        """Delete a favorite. Returns True if deleted, False if not found."""
+        # Query for favorites by user
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("FAVORITE#")
+        )
+        
+        # Find the favorite for this completion
+        for item in response.get("Items", []):
+            if item.get("completion_id") == completion_id:
+                self.table.delete_item(
+                    Key={"PK": f"USER#{user_id}", "SK": item["SK"]}
+                )
+                return True
+        
+        return False
+
+    def is_favorited(self, completion_id: str, user_id: str) -> bool:
+        """Check if a completion is favorited by user."""
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("FAVORITE#")
+        )
+        
+        for item in response.get("Items", []):
+            if item.get("completion_id") == completion_id:
+                return True
+        
+        return False
+
+    def get_favorite_completions(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Get all favorited completions for a user."""
+        # Query for favorites
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("FAVORITE#")
+        )
+        
+        favorites = response.get("Items", [])
+        completion_ids = [f.get("completion_id") for f in favorites if f.get("completion_id")]
+        
+        # Get the actual completions
+        completions = []
+        for comp_id in completion_ids:
+            # Query for the completion
+            comp_response = self.table.query(
+                KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").eq(f"COMPLETION#{comp_id}")
+            )
+            if comp_response.get("Items"):
+                completion = self._completion_from_item(comp_response["Items"][0])
+                completions.append(completion)
+        
+        # Sort by created_at descending
+        completions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        
+        # Apply pagination
+        return completions[offset : offset + limit]
+
     def get_friend_status(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
         """Get friendship status between two users."""
         response = self.table.get_item(
