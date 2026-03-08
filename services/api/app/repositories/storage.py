@@ -45,7 +45,17 @@ class DataStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+        """Get feed items (completions from friends or all public completions for MVP)."""
+        raise NotImplementedError
+
+    @abstractmethod
     def seed_prompts(self, prompts: list[dict[str, Any]]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def seed_friends(self, friendships: list[tuple[str, str]]) -> None:
+        """Seed sample friend relationships for testing."""
         raise NotImplementedError
 
 
@@ -110,9 +120,35 @@ class MemoryDataStore(DataStore):
         items = self.completions_by_user.get(user_id, [])
         return list(reversed(items))
 
+    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+        """Return all public completions (MVP version without friend filtering)."""
+        all_completions = []
+        for uid, completions in self.completions_by_user.items():
+            for completion in completions:
+                if completion.get("share_with_friends", True):
+                    all_completions.append({
+                        **completion,
+                        "user_id": uid,
+                        "user_display_name": self.users_by_id.get(uid, {}).get("display_name", "Unknown"),
+                    })
+        
+        # Sort by created_at descending
+        all_completions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        
+        # Simple pagination
+        start = int(cursor) if cursor else 0
+        items = all_completions[start:start + limit]
+        next_cursor = str(start + limit) if start + limit < len(all_completions) else None
+        
+        return items, next_cursor
+
     def seed_prompts(self, prompts: list[dict[str, Any]]) -> None:
         for prompt in prompts:
             self.prompts_by_id[prompt["id"]] = prompt
+
+    def seed_friends(self, friendships: list[tuple[str, str]]) -> None:
+        """Seed sample friend relationships (not used in memory store for MVP)."""
+        pass
 
 
 class DynamoDataStore(DataStore):
@@ -331,6 +367,66 @@ class DynamoDataStore(DataStore):
                         "GSI1SK": f"CAT#{prompt['category']}#PRI#050#PROMPT#{prompt['id']}",
                     }
                 )
+
+    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+        """
+        Get recent public completions for feed (MVP: all public completions).
+        In production, would filter by friend relationships.
+        """
+        # Query all completions with share_with_friends=true, sorted by created_at
+        response = self.table.scan(
+            FilterExpression=Attr("entityType").eq("COMPLETION") & Attr("shareWithFriends").eq(True),
+        )
+        
+        items = response.get("Items", [])
+        
+        # Convert items to feed format
+        feed_items = [
+            {
+                "completion_id": item.get("completionId", ""),
+                "user_id": item.get("userId", ""),
+                "user_display_name": self._get_user_display_name(item.get("userId", "")),
+                "prompt_id": item.get("promptId", ""),
+                "prompt_title": item.get("promptTitle", ""),
+                "photo_url": item.get("photoUrl", ""),
+                "note": item.get("note", ""),
+                "location": item.get("location", ""),
+                "date": item.get("date", ""),
+                "created_at": item.get("createdAt", ""),
+            }
+            for item in items
+        ]
+        
+        # Sort by created_at descending
+        feed_items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        
+        # Pagination
+        start = int(cursor) if cursor else 0
+        paginated = feed_items[start:start + limit]
+        next_cursor = str(start + limit) if start + limit < len(feed_items) else None
+        
+        return paginated, next_cursor
+
+    def seed_friends(self, friendships: list[tuple[str, str]]) -> None:
+        """Seed sample friend relationships for testing."""
+        with self.table.batch_writer() as batch:
+            for user_id, friend_id in friendships:
+                batch.put_item(
+                    Item={
+                        "PK": f"USER#{user_id}",
+                        "SK": f"FRIEND#{friend_id}",
+                        "entityType": "FRIENDSHIP",
+                        "status": "accepted",
+                        "createdAt": utc_now_iso(),
+                    }
+                )
+
+    def _get_user_display_name(self, user_id: str) -> str:
+        """Helper to get user display name."""
+        if not user_id:
+            return "Unknown"
+        user = self.get_user(user_id)
+        return user.get("display_name", "Unknown") if user else "Unknown"
 
     @staticmethod
     def _prompt_from_item(item: dict[str, Any]) -> dict[str, Any]:
