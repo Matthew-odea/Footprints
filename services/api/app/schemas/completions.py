@@ -14,6 +14,7 @@ class CompletionItem(BaseModel):
     completion_id: str
     prompt_id: str
     prompt_title: str
+    category: str | None = None
     note: str
     date: str
     location: str

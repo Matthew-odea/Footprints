@@ -16,6 +16,7 @@ class CompletionService:
             user_id=user_id,
             payload=payload,
             prompt_title=prompt["title"],
+            prompt_category=prompt.get("category"),
         )
 
     def list_history(self, user_id: str) -> list[dict]:

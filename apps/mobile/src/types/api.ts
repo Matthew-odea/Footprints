@@ -16,6 +16,7 @@ export type CompletionItem = {
     completion_id: string;
     prompt_id: string;
     prompt_title: string;
+    category?: string | null;
     note: string;
     date: string;
     location: string;

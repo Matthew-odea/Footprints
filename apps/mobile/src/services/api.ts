@@ -72,6 +72,28 @@ export async function getHistory(token: string): Promise<CompletionItem[]> {
     return response.items;
 }
 
+export async function getArchiveCompletions(
+    token: string,
+    startDate: string,
+    endDate: string,
+    limit: number = 100,
+    offset: number = 0
+): Promise<CompletionItem[]> {
+    const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+        limit: String(limit),
+        offset: String(offset),
+    });
+
+    const response = await request<{ items: CompletionItem[] }>(`/api/v1/archive/completions?${params.toString()}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    return response.items;
+}
+
 export async function getMe(token: string): Promise<UserResponse> {
     return request<UserResponse>("/api/v1/users/me", {
         headers: {

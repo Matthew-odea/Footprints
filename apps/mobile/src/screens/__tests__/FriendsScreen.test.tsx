@@ -6,29 +6,21 @@ import { Alert } from 'react-native';
 
 // Mock the friends API
 jest.mock('../../services/friends');
+jest.mock('../../state/AuthContext', () => ({
+  useAuth: () => ({ token: 'mock-token' }),
+}));
 jest.spyOn(Alert, 'alert');
 
 describe('FriendsScreen', () => {
-  const mockNavigation = {
-    navigate: jest.fn(),
-  };
-
-  const mockRoute = {
-    key: 'friends',
-    name: 'Friends' as const,
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock global token
-    (global as any).userToken = 'mock-token';
   });
 
   it('should render empty state when no friends', async () => {
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
@@ -38,20 +30,20 @@ describe('FriendsScreen', () => {
 
   it('should display friends list', async () => {
     const mockFriends = [
-      { friend_id: '1', username: 'bob', profile: { full_name: 'Bob Smith' } },
-      { friend_id: '2', username: 'charlie', profile: { full_name: 'Charlie Brown' } },
+      { friend_id: '1', username: 'bob', display_name: 'Bob Smith', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
+      { friend_id: '2', username: 'charlie', display_name: 'Charlie Brown', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
     ];
 
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue(mockFriends);
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
-      expect(getByText('bob')).toBeTruthy();
+      expect(getByText('@bob')).toBeTruthy();
       expect(getByText('Bob Smith')).toBeTruthy();
-      expect(getByText('charlie')).toBeTruthy();
+      expect(getByText('@charlie')).toBeTruthy();
       expect(getByText('Charlie Brown')).toBeTruthy();
     });
   });
@@ -61,12 +53,13 @@ describe('FriendsScreen', () => {
       () => new Promise(() => {}) // Never resolves
     );
 
-    const { getByTestId } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+    const { UNSAFE_getByType } = render(
+      <FriendsScreen />
     );
 
-    // Check for ActivityIndicator (you may need to add testID to component)
-    expect(() => getByTestId('loading-indicator')).not.toThrow();
+    // Check for ActivityIndicator
+    const { ActivityIndicator } = require('react-native');
+    expect(() => UNSAFE_getByType(ActivityIndicator)).not.toThrow();
   });
 
   it('should display error message on fetch failure', async () => {
@@ -75,19 +68,19 @@ describe('FriendsScreen', () => {
     );
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
-      expect(getByText(/failed to load friends/i)).toBeTruthy();
+      expect(getByText('Error: Network error')).toBeTruthy();
     });
   });
 
   it('should show add friend modal when add button pressed', async () => {
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
 
-    const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+    const { getByText, getByPlaceholderText } = render(
+      <FriendsScreen />
     );
 
     await waitFor(() => {
@@ -98,20 +91,20 @@ describe('FriendsScreen', () => {
     fireEvent.press(addButton);
 
     await waitFor(() => {
-      expect(getByText('Search by username')).toBeTruthy();
+      expect(getByPlaceholderText('Search username')).toBeTruthy();
     });
   });
 
   it('should search users when search function called', async () => {
     const mockSearchResults = [
-      { friend_id: null, username: 'bobby', profile: { full_name: 'Bobby Tables' } },
+      { friend_id: null, username: 'bobby', display_name: 'Bobby Tables', status: 'none', created_at: '2026-01-01T00:00:00Z' },
     ];
 
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
     (friendsAPI.searchUsers as jest.Mock).mockResolvedValue(mockSearchResults);
 
     const { getByText, getByPlaceholderText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
@@ -123,7 +116,7 @@ describe('FriendsScreen', () => {
     fireEvent.press(addButton);
 
     await waitFor(() => {
-      const input = getByPlaceholderText('Search by username');
+      const input = getByPlaceholderText('Search username');
       fireEvent.changeText(input, 'bob');
       
       const searchButton = getByText('Search');
@@ -139,14 +132,16 @@ describe('FriendsScreen', () => {
     const mockNewFriend = {
       friend_id: '3',
       username: 'bobby',
-      profile: { full_name: 'Bobby Tables' },
+      display_name: 'Bobby Tables',
+      status: 'accepted',
+      created_at: '2026-01-01T00:00:00Z',
     };
 
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
     (friendsAPI.addFriend as jest.Mock).mockResolvedValue(mockNewFriend);
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
@@ -159,32 +154,32 @@ describe('FriendsScreen', () => {
 
   it('should show confirmation alert before removing friend', async () => {
     const mockFriends = [
-      { friend_id: '1', username: 'bob', profile: { full_name: 'Bob Smith' } },
+      { friend_id: '1', username: 'bob', display_name: 'Bob Smith', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
     ];
 
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue(mockFriends);
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
-      expect(getByText('bob')).toBeTruthy();
+      expect(getByText('@bob')).toBeTruthy();
     });
 
     const removeButton = getByText('Remove');
     fireEvent.press(removeButton);
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Remove Friend',
-      expect.stringContaining('bob'),
+      'Remove friend',
+      expect.stringContaining('@bob'),
       expect.any(Array)
     );
   });
 
   it('should remove friend when confirmed', async () => {
     const mockFriends = [
-      { friend_id: '1', username: 'bob', profile: { full_name: 'Bob Smith' } },
+      { friend_id: '1', username: 'bob', display_name: 'Bob Smith', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
     ];
 
     (friendsAPI.listFriends as jest.Mock).mockResolvedValue(mockFriends);
@@ -199,11 +194,11 @@ describe('FriendsScreen', () => {
     });
 
     const { getByText } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
-      expect(getByText('bob')).toBeTruthy();
+      expect(getByText('@bob')).toBeTruthy();
     });
 
     const removeButton = getByText('Remove');
@@ -216,12 +211,12 @@ describe('FriendsScreen', () => {
 
   it('should reload friends list after adding friend', async () => {
     const initialFriends = [
-      { friend_id: '1', username: 'bob', profile: { full_name: 'Bob Smith' } },
+      { friend_id: '1', username: 'bob', display_name: 'Bob Smith', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
     ];
     
     const updatedFriends = [
       ...initialFriends,
-      { friend_id: '2', username: 'charlie', profile: { full_name: 'Charlie Brown' } },
+      { friend_id: '2', username: 'charlie', display_name: 'Charlie Brown', status: 'accepted', created_at: '2026-01-01T00:00:00Z' },
     ];
 
     (friendsAPI.listFriends as jest.Mock)
@@ -231,11 +226,11 @@ describe('FriendsScreen', () => {
     (friendsAPI.addFriend as jest.Mock).mockResolvedValue(updatedFriends[1]);
 
     const { getByText, rerender } = render(
-      <FriendsScreen navigation={mockNavigation as any} route={mockRoute} />
+      <FriendsScreen />
     );
 
     await waitFor(() => {
-      expect(getByText('bob')).toBeTruthy();
+      expect(getByText('@bob')).toBeTruthy();
     });
 
     // After adding friend, list should be reloaded

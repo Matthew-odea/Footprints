@@ -16,7 +16,7 @@ jest.mock('expo-file-system', () => ({
 }));
 
 describe('Upload Service', () => {
-  const mockToken = 'Bearer test-token-123';
+  const mockToken = 'test-token-123';
   const mockAPI = 'https://9fal46jhxe.execute-api.us-east-1.amazonaws.com';
 
   beforeEach(() => {
@@ -53,7 +53,7 @@ describe('Upload Service', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            Authorization: mockToken,
+            Authorization: `Bearer ${mockToken}`,
           }),
         })
       );
@@ -183,7 +183,7 @@ describe('Upload Service', () => {
         expect.stringContaining('/api/v1/feed'),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: mockToken,
+            Authorization: `Bearer ${mockToken}`,
           }),
         })
       );

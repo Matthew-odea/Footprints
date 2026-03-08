@@ -47,11 +47,18 @@ class MemoryDataStore(DataStore):
     def get_prompt(self, prompt_id: str) -> dict[str, Any] | None:
         return self.prompts_by_id.get(prompt_id)
 
-    def create_completion(self, user_id: str, payload: dict[str, Any], prompt_title: str) -> dict[str, Any]:
+    def create_completion(
+        self,
+        user_id: str,
+        payload: dict[str, Any],
+        prompt_title: str,
+        prompt_category: str | None = None,
+    ) -> dict[str, Any]:
         completion = {
             "completion_id": str(uuid4()),
             "prompt_id": payload["prompt_id"],
             "prompt_title": prompt_title,
+            "category": prompt_category,
             "note": payload["note"],
             "date": payload["date"],
             "location": payload["location"],

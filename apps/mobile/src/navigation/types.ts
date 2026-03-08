@@ -9,6 +9,6 @@ export type AppTabParamList = {
     Home: undefined;
     Feed: undefined;
     Friends: undefined;
-    History: undefined;
+    Archive: undefined;
     Settings: undefined;
 };

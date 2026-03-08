@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ArchiveScreen } from "../screens/ArchiveScreen";
 import { HomeScreen } from "../screens/HomeScreen";
-import { HistoryScreen } from "../screens/HistoryScreen";
 import { FeedScreen } from "../screens/FeedScreen";
 import { FriendsScreen } from "../screens/FriendsScreen";
 import { LoginScreen } from "../screens/LoginScreen";
@@ -23,7 +23,7 @@ function AppTabs() {
             <Tab.Screen name="Home" component={HomeScreen} />
             <Tab.Screen name="Feed" component={FeedScreen} />
             <Tab.Screen name="Friends" component={FriendsScreen} />
-            <Tab.Screen name="History" component={HistoryScreen} />
+            <Tab.Screen name="Archive" component={ArchiveScreen} />
             <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
     );

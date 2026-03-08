@@ -7,8 +7,10 @@ global.fetch = jest.fn();
 jest.mock("@react-navigation/native", () => ({
   ...jest.requireActual("@react-navigation/native"),
   useFocusEffect: (callback: () => void) => {
-    // Run callback immediately in tests
-    callback();
+    const React = require("react");
+    React.useEffect(() => {
+      callback();
+    }, [callback]);
   },
   useNavigation: () => ({
     navigate: jest.fn(),

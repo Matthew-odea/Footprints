@@ -23,7 +23,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    expect(getByPlaceholderText('Search by username')).toBeTruthy();
+    expect(getByPlaceholderText('Search username')).toBeTruthy();
   });
 
   it('should not render modal when not visible', () => {
@@ -38,7 +38,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    expect(queryByPlaceholderText('Search by username')).toBeNull();
+    expect(queryByPlaceholderText('Search username')).toBeNull();
   });
 
   it('should call onSearch when search button pressed with valid query', async () => {
@@ -53,7 +53,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    const input = getByPlaceholderText('Search by username');
+    const input = getByPlaceholderText('Search username');
     const searchButton = getByText('Search');
 
     fireEvent.changeText(input, 'bob');
@@ -76,7 +76,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    const input = getByPlaceholderText('Search by username');
+    const input = getByPlaceholderText('Search username');
     const searchButton = getByText('Search');
 
     fireEvent.changeText(input, 'b');
@@ -126,7 +126,7 @@ describe('AddFriendModal', () => {
     );
 
     // First search to get results
-    const input = getByPlaceholderText('Search by username');
+    const input = getByPlaceholderText('Search username');
     fireEvent.changeText(input, 'bob');
     
     const searchButton = getAllByText('Search')[0];
@@ -165,7 +165,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    const cancelButton = getByText('Cancel');
+    const cancelButton = getByText('Done');
     fireEvent.press(cancelButton);
 
     expect(mockOnClose).toHaveBeenCalled();
@@ -183,7 +183,7 @@ describe('AddFriendModal', () => {
       />
     );
 
-    const input = getByPlaceholderText('Search by username');
+    const input = getByPlaceholderText('Search username');
     fireEvent.changeText(input, 'test query');
 
     rerender(
@@ -209,15 +209,17 @@ describe('AddFriendModal', () => {
     );
 
     // Input should be cleared after reopening
-    const newInput = getByPlaceholderText('Search by username');
+    const newInput = getByPlaceholderText('Search username');
     expect(newInput.props.value).toBe('');
   });
 
-  it('should display loading spinner when searching', () => {
-    const { getByTestId } = render(
+  it('should display loading spinner when searching', async () => {
+    mockOnSearch.mockImplementation(() => new Promise(() => {})); // Never resolves
+
+    const { getByPlaceholderText, getByText, UNSAFE_queryByType } = render(
       <AddFriendModal
         visible={true}
-        loading={true}
+        loading={false}
         error={null}
         onClose={mockOnClose}
         onSearch={mockOnSearch}
@@ -225,7 +227,16 @@ describe('AddFriendModal', () => {
       />
     );
 
-    // ActivityIndicator should be present (testID can be added to component)
-    expect(() => getByTestId('loading-spinner')).not.toThrow();
+    // Trigger search
+    const input = getByPlaceholderText('Search username');
+    fireEvent.changeText(input, 'bob');
+    const searchButton = getByText('Search');
+    fireEvent.press(searchButton);
+
+    // ActivityIndicator should appear while searching
+    await waitFor(() => {
+      const { ActivityIndicator } = require('react-native');
+      expect(UNSAFE_queryByType(ActivityIndicator)).toBeTruthy();
+    });
   });
 });

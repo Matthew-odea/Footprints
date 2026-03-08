@@ -40,6 +40,7 @@ def test_get_completions_by_date_range_single_date(client) -> None:
     prompts_response = client.get("/api/v1/prompts/active", headers=headers)
     assert prompts_response.status_code == 200
     prompt_id = prompts_response.json()["items"][0]["id"]
+    prompt_category = prompts_response.json()["items"][0]["category"]
 
     # Create a completion
     completion_response = client.post(
@@ -70,6 +71,7 @@ def test_get_completions_by_date_range_single_date(client) -> None:
     assert len(items) == 1
     assert items[0]["note"] == "Walked in the park"
     assert items[0]["date"] == "2026-03-15"
+    assert items[0]["category"] == prompt_category
 
 
 def test_get_completions_by_date_range_multiple_dates(client) -> None:

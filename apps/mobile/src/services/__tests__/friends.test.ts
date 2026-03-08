@@ -37,6 +37,7 @@ describe('friends API client', () => {
         `${API_BASE_URL}/api/v1/friends`,
         {
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${mockToken}`,
           },
         }
@@ -48,9 +49,10 @@ describe('friends API client', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: 'Unauthorized',
+        text: async () => 'Unauthorized',
       });
 
-      await expect(listFriends(mockToken)).rejects.toThrow('HTTP error: Unauthorized');
+      await expect(listFriends(mockToken)).rejects.toThrow('Unauthorized');
     });
   });
 
@@ -74,6 +76,7 @@ describe('friends API client', () => {
         `${API_BASE_URL}/api/v1/friends/search?q=bob`,
         {
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${mockToken}`,
           },
         }
@@ -92,8 +95,13 @@ describe('friends API client', () => {
       await searchUsers(mockToken, 'john doe');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        `${API_BASE_URL}/api/v1/friends/search?q=john+doe`,
-        expect.any(Object)
+        `${API_BASE_URL}/api/v1/friends/search?q=john%20doe`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${mockToken}`,
+          },
+        }
       );
     });
   });
@@ -131,9 +139,10 @@ describe('friends API client', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: 'Conflict',
+        text: async () => 'Conflict',
       });
 
-      await expect(addFriend(mockToken, 'bob')).rejects.toThrow('HTTP error: Conflict');
+      await expect(addFriend(mockToken, 'bob')).rejects.toThrow('Conflict');
     });
   });
 
@@ -151,6 +160,7 @@ describe('friends API client', () => {
         {
           method: 'DELETE',
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${mockToken}`,
           },
         }
@@ -161,9 +171,10 @@ describe('friends API client', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: 'Not Found',
+        text: async () => 'Not Found',
       });
 
-      await expect(removeFriend(mockToken, '999')).rejects.toThrow('HTTP error: Not Found');
+      await expect(removeFriend(mockToken, '999')).rejects.toThrow('Not Found');
     });
   });
 });

@@ -138,7 +138,13 @@ class DynamoDataStore(DataStore):
             return None
         return self._prompt_from_item(item)
 
-    def create_completion(self, user_id: str, payload: dict[str, Any], prompt_title: str) -> dict[str, Any]:
+    def create_completion(
+        self,
+        user_id: str,
+        payload: dict[str, Any],
+        prompt_title: str,
+        prompt_category: str | None = None,
+    ) -> dict[str, Any]:
         completion_id = str(uuid4())
         created_at = utc_now_iso()
         item = {
@@ -149,6 +155,7 @@ class DynamoDataStore(DataStore):
             "completionId": completion_id,
             "promptId": payload["prompt_id"],
             "promptTitle": prompt_title,
+            "category": prompt_category,
             "note": payload["note"],
             "date": payload["date"],
             "location": payload["location"],
@@ -182,6 +189,7 @@ class DynamoDataStore(DataStore):
             "completion_id": completion_id,
             "prompt_id": payload["prompt_id"],
             "prompt_title": prompt_title,
+            "category": prompt_category,
             "note": payload["note"],
             "date": payload["date"],
             "location": payload["location"],
@@ -200,6 +208,7 @@ class DynamoDataStore(DataStore):
                 "completion_id": item["completionId"],
                 "prompt_id": item["promptId"],
                 "prompt_title": item["promptTitle"],
+                "category": item.get("category"),
                 "note": item["note"],
                 "date": item["date"],
                 "location": item["location"],
@@ -218,31 +227,42 @@ class DynamoDataStore(DataStore):
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         """Get completions within a date range with pagination."""
-        # Query completions for user, filtered by date range
-        response = self.table.query(
-            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("COMP#"),
-            FilterExpression=Attr("date").between(start_date, end_date),
-            ScanIndexForward=False,
-            Limit=offset + limit,  # Fetch enough items to skip offset and get limit
-        )
-        items = response.get("Items", [])
-        
-        # Transform items and apply offset
+        # DynamoDB applies FilterExpression after reading, so we page until we have enough filtered records.
+        target_count = offset + limit
+        filtered_items: list[dict[str, Any]] = []
+        last_evaluated_key = None
+
+        while len(filtered_items) < target_count:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("COMP#"),
+                "FilterExpression": Attr("date").between(start_date, end_date),
+                "ScanIndexForward": False,
+                "Limit": max(limit, 25),
+            }
+            if last_evaluated_key:
+                query_params["ExclusiveStartKey"] = last_evaluated_key
+
+            response = self.table.query(**query_params)
+            filtered_items.extend(response.get("Items", []))
+            last_evaluated_key = response.get("LastEvaluatedKey")
+            if not last_evaluated_key:
+                break
+
         transformed = [
             {
                 "completion_id": item["completionId"],
                 "prompt_id": item["promptId"],
                 "prompt_title": item["promptTitle"],
+                "category": item.get("category"),
                 "note": item["note"],
                 "date": item["date"],
                 "location": item["location"],
                 "photo_url": item.get("photoUrl", ""),
                 "share_with_friends": item.get("shareWithFriends", True),
             }
-            for item in items
+            for item in filtered_items
         ]
-        
-        # Apply pagination
+
         return transformed[offset : offset + limit]
 
     def seed_prompts(self, prompts: list[dict[str, Any]]) -> None:

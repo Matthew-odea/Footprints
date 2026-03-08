@@ -31,7 +31,13 @@ class DataStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create_completion(self, user_id: str, payload: dict[str, Any], prompt_title: str) -> dict[str, Any]:
+    def create_completion(
+        self,
+        user_id: str,
+        payload: dict[str, Any],
+        prompt_title: str,
+        prompt_category: str | None = None,
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
