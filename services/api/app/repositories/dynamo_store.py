@@ -555,6 +555,96 @@ class DynamoDataStore(DataStore):
         self.table.delete_item(Key={"PK": f"USER#{user_id}", "SK": f"FRIEND#{friend_id}"})
         self.table.delete_item(Key={"PK": f"USER#{requester_id}", "SK": f"FRIEND#{user_id}"})
 
+    def get_completion_by_id(self, user_id: str, completion_id: str) -> dict[str, Any] | None:
+        """Get a single completion by ID (for entry detail view)."""
+        response = self.table.get_item(
+            Key={"PK": f"USER#{user_id}", "SK": f"COMPLETION#{completion_id}"}
+        )
+        if "Item" not in response:
+            return None
+        return self._completion_from_item(response["Item"])
+
+    def create_comment(
+        self,
+        completion_id: str,
+        user_id: str,
+        user_display_name: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment on a completion."""
+        comment_id = str(uuid4())
+        now = utc_now_iso()
+        comment = {
+            "PK": f"COMPLETION#{completion_id}",
+            "SK": f"COMMENT#{comment_id}",
+            "entityType": "COMMENT",
+            "comment_id": comment_id,
+            "completion_id": completion_id,
+            "user_id": user_id,
+            "user_display_name": user_display_name,
+            "text": payload["text"],
+            "parent_comment_id": payload.get("parent_comment_id"),
+            "created_at": now,
+            "updated_at": now,
+            "reply_count": 0,
+        }
+        self.table.put_item(Item=comment)
+        return {
+            "comment_id": comment_id,
+            "completion_id": completion_id,
+            "user_id": user_id,
+            "user_display_name": user_display_name,
+            "text": payload["text"],
+            "created_at": now,
+            "updated_at": now,
+            "parent_comment_id": payload.get("parent_comment_id"),
+            "reply_count": 0,
+        }
+
+    def list_comments(self, completion_id: str) -> list[dict[str, Any]]:
+        """List all top-level comments for a completion."""
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"COMPLETION#{completion_id}")
+            & Key("SK").begins_with("COMMENT#"),
+        )
+        items = response.get("Items", [])
+        # Filter for top-level comments only (no parent_comment_id)
+        top_level = [item for item in items if not item.get("parent_comment_id")]
+        # Sort by created_at descending
+        return sorted(
+            [
+                {
+                    "comment_id": item["comment_id"],
+                    "completion_id": item["completion_id"],
+                    "user_id": item["user_id"],
+                    "user_display_name": item["user_display_name"],
+                    "text": item["text"],
+                    "created_at": item["created_at"],
+                    "updated_at": item["updated_at"],
+                    "parent_comment_id": item.get("parent_comment_id"),
+                    "reply_count": item.get("reply_count", 0),
+                }
+                for item in top_level
+            ],
+            key=lambda x: x["created_at"],
+            reverse=True,
+        )
+
+    def delete_comment(self, completion_id: str, comment_id: str, user_id: str) -> bool:
+        """Delete a comment (only owner can delete)."""
+        response = self.table.get_item(
+            Key={"PK": f"COMPLETION#{completion_id}", "SK": f"COMMENT#{comment_id}"}
+        )
+        if "Item" not in response:
+            return False
+
+        item = response["Item"]
+        if item.get("user_id") != user_id:
+            return False
+
+        self.table.delete_item(Key={"PK": f"COMPLETION#{completion_id}", "SK": f"COMMENT#{comment_id}"})
+        return True
+
     def get_friend_status(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
         """Get friendship status between two users."""
         response = self.table.get_item(

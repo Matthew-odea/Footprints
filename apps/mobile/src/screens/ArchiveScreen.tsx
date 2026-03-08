@@ -3,7 +3,6 @@ import {
     ActivityIndicator,
     FlatList,
     Image,
-    Modal,
     PanResponder,
     Pressable,
     RefreshControl,
@@ -60,7 +59,11 @@ function monthLabel(date: Date): string {
     return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export function ArchiveScreen() {
+interface ArchiveScreenProps {
+    navigation: any;
+}
+
+export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
     const { token } = useAuth();
     const timelineListRef = useRef<FlatList<CompletionItem> | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>("calendar");
@@ -73,7 +76,6 @@ export function ArchiveScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [selectedTimelineItem, setSelectedTimelineItem] = useState<CompletionItem | null>(null);
 
     const dateToCompletion = useMemo(() => {
         const map = new Map<string, CompletionItem>();
@@ -280,7 +282,10 @@ export function ArchiveScreen() {
                             }, 100);
                         }}
                         renderItem={({ item }) => (
-                            <Pressable style={styles.timelineCard} onPress={() => setSelectedTimelineItem(item)}>
+                            <Pressable
+                                style={styles.timelineCard}
+                                onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
+                            >
                                 <Text style={styles.timelineCardTitle}>{item.prompt_title}</Text>
                                 <Text>{item.date}</Text>
                                 <Text>{item.location}</Text>
@@ -302,7 +307,10 @@ export function ArchiveScreen() {
                     numColumns={2}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     renderItem={({ item }) => (
-                        <Pressable style={styles.galleryCell} onPress={() => setSelectedTimelineItem(item)}>
+                        <Pressable
+                            style={styles.galleryCell}
+                            onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
+                        >
                             {item.photo_url ? (
                                 <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
                             ) : (
@@ -324,31 +332,6 @@ export function ArchiveScreen() {
                     ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footerLoader} /> : null}
                 />
             )}
-
-            <Modal
-                visible={Boolean(selectedTimelineItem)}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setSelectedTimelineItem(null)}
-            >
-                <View style={styles.modalBackdrop}>
-                    <View style={styles.modalCard}>
-                        <Pressable style={styles.modalClose} onPress={() => setSelectedTimelineItem(null)}>
-                            <Text style={styles.modalCloseText}>Close</Text>
-                        </Pressable>
-                        {selectedTimelineItem?.photo_url ? (
-                            <Image source={{ uri: selectedTimelineItem.photo_url }} style={styles.modalImage} />
-                        ) : null}
-                        <Text style={styles.modalTitle}>{selectedTimelineItem?.prompt_title}</Text>
-                        {selectedTimelineItem?.category ? (
-                            <Text style={styles.modalCategory}>{selectedTimelineItem.category}</Text>
-                        ) : null}
-                        <Text style={styles.modalText}>{selectedTimelineItem?.date}</Text>
-                        <Text style={styles.modalText}>{selectedTimelineItem?.location}</Text>
-                        <Text style={styles.modalText}>{selectedTimelineItem?.note}</Text>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }

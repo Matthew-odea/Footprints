@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.security import AuthError, decode_access_token
 from app.repositories.storage import DataStore, DynamoDataStore, MemoryDataStore
 from app.services.auth_service import AuthService
+from app.services.comment_service import CommentService
 from app.services.completion_service import CompletionService
 from app.services.friend_service import FriendService
 from app.services.prompt_service import PromptService
@@ -59,3 +60,7 @@ def get_user_service(store: DataStore = Depends(get_store)) -> UserService:
 
 def get_friend_service(store: DataStore = Depends(get_store)) -> FriendService:
     return FriendService(store=store)
+
+
+def get_comment_service(store: DataStore = Depends(get_store)) -> CommentService:
+    return CommentService(store=store)

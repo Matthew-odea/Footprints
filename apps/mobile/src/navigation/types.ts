@@ -3,6 +3,7 @@ export type RootStackParamList = {
     AppTabs: undefined;
     PromptDetail: { promptId: string };
     PromptUpload: { promptId: string };
+    EntryDetail: { completionId: string };
 };
 
 export type AppTabParamList = {

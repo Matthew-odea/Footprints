@@ -28,3 +28,7 @@ class CompletionService:
         return self.store.get_completions_by_date_range(
             user_id=user_id, start_date=start_date, end_date=end_date, limit=limit, offset=offset
         )
+
+    def get_completion_by_id(self, user_id: str, completion_id: str) -> dict | None:
+        """Get a single completion by ID."""
+        return self.store.get_completion_by_id(user_id=user_id, completion_id=completion_id)

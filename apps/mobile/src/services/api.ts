@@ -1,5 +1,13 @@
 import { API_BASE_URL } from "../lib/constants";
-import { CompletionItem, Prompt, TokenResponse, UserResponse } from "../types/api";
+import {
+    CompletionItem,
+    CommentItem,
+    CommentsListResponse,
+    EntryDetailResponse,
+    Prompt,
+    TokenResponse,
+    UserResponse,
+} from "../types/api";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -92,6 +100,54 @@ export async function getArchiveCompletions(
         },
     });
     return response.items;
+}
+
+export async function getCompletionById(token: string, completionId: string): Promise<CompletionItem> {
+    return request<CompletionItem>(`/api/v1/archive/completions/${completionId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+}
+
+export async function listComments(token: string, completionId: string): Promise<CommentItem[]> {
+    const response = await request<CommentsListResponse>(
+        `/api/v1/completions/${completionId}/comments`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        }
+    );
+    return response.items;
+}
+
+export async function createComment(
+    token: string,
+    completionId: string,
+    text: string,
+    parentCommentId?: string
+): Promise<CommentItem> {
+    const response = await request<{ item: CommentItem }>(`/api/v1/completions/${completionId}/comments`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+            text,
+            parent_comment_id: parentCommentId || null,
+        }),
+    });
+    return response.item;
+}
+
+export async function deleteComment(token: string, completionId: string, commentId: string): Promise<void> {
+    await request<{ status: string }>(`/api/v1/completions/${completionId}/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
 }
 
 export async function getMe(token: string): Promise<UserResponse> {

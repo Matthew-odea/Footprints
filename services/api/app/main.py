@@ -3,7 +3,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.routes import auth, archive, completions, feed, friends, health, history, prompts, uploads, users
+from app.api.v1.routes import (
+    auth,
+    archive,
+    comments,
+    completions,
+    feed,
+    friends,
+    health,
+    history,
+    prompts,
+    uploads,
+    users,
+)
 from app.core.config import get_settings
 from app.dependencies import get_store
 
@@ -79,6 +91,7 @@ app.include_router(prompts.router, prefix=settings.api_prefix)
 app.include_router(completions.router, prefix=settings.api_prefix)
 app.include_router(history.router, prefix=settings.api_prefix)
 app.include_router(archive.router, prefix=settings.api_prefix)
+app.include_router(comments.router, prefix=settings.api_prefix)
 app.include_router(uploads.router, prefix=settings.api_prefix + "/uploads")
 app.include_router(feed.router, prefix=settings.api_prefix + "/feed")
 app.include_router(friends.router, prefix=settings.api_prefix)

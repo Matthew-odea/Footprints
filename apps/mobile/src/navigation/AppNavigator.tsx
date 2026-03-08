@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { ArchiveScreen } from "../screens/ArchiveScreen";
+import { EntryDetailScreen } from "../screens/EntryDetailScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { FeedScreen } from "../screens/FeedScreen";
 import { FriendsScreen } from "../screens/FriendsScreen";
@@ -58,6 +59,11 @@ export function AppNavigator() {
                                 name="PromptUpload"
                                 component={PromptUploadScreen}
                                 options={{ title: "Upload completion" }}
+                            />
+                            <RootStack.Screen
+                                name="EntryDetail"
+                                component={EntryDetailScreen}
+                                options={{ title: "Entry details" }}
                             />
                         </>
                     )}

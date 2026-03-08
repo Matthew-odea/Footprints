@@ -132,3 +132,29 @@ class DataStore(ABC):
     def reject_friend_request(self, user_id: str, request_id: str) -> None:
         """Reject an incoming friend request."""
         raise NotImplementedError
+
+    @abstractmethod
+    def get_completion_by_id(self, user_id: str, completion_id: str) -> dict[str, Any] | None:
+        """Get a single completion by ID (for entry detail view)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_comment(
+        self,
+        completion_id: str,
+        user_id: str,
+        user_display_name: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment on a completion."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_comments(self, completion_id: str) -> list[dict[str, Any]]:
+        """List all top-level comments for a completion."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_comment(self, completion_id: str, comment_id: str, user_id: str) -> bool:
+        """Delete a comment (only owner can delete). Returns True if deleted, False if not found/unauthorized."""
+        raise NotImplementedError

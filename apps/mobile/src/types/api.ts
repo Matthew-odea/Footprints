@@ -72,3 +72,25 @@ export type AcceptFriendRequestResponse = {
     status: string;
     accepted_at: string;
 };
+
+export type CommentItem = {
+    comment_id: string;
+    completion_id: string;
+    user_id: string;
+    user_display_name: string;
+    text: string;
+    created_at: string;
+    updated_at: string;
+    parent_comment_id?: string | null;
+    reply_count: number;
+};
+
+export type CommentsListResponse = {
+    items: CommentItem[];
+    total: number;
+};
+
+export type EntryDetailResponse = {
+    item: CompletionItem;
+    comments: CommentItem[];
+};

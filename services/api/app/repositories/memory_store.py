@@ -11,7 +11,9 @@ class MemoryDataStore(DataStore):
     users_by_id: dict[str, dict[str, Any]] = {}
     prompts_by_id: dict[str, dict[str, Any]] = {}
     completions_by_user: dict[str, list[dict[str, Any]]] = {}
+    completions_by_id: dict[str, dict[str, Any]] = {}  # For get_completion_by_id
     friendships: dict[str, list[dict[str, Any]]] = {}
+    comments_by_completion: dict[str, list[dict[str, Any]]] = {}  # For comments
 
     def get_or_create_user(self, username: str) -> dict[str, Any]:
         existing = self.users_by_username.get(username)
@@ -67,6 +69,7 @@ class MemoryDataStore(DataStore):
             "created_at": utc_now_iso(),
         }
         self.completions_by_user.setdefault(user_id, []).append(completion)
+        self.completions_by_id[completion["completion_id"]] = completion
         user = self.users_by_id[user_id]
         user["completed_count"] = user.get("completed_count", 0) + 1
         return completion
@@ -311,3 +314,51 @@ class MemoryDataStore(DataStore):
         """Internal helper to get friendship."""
         friends = self.friendships.get(user_id, [])
         return next((f for f in friends if f["friend_id"] == friend_id), None)
+
+    def get_completion_by_id(self, user_id: str, completion_id: str) -> dict[str, Any] | None:
+        """Get a single completion by ID."""
+        completion = self.completions_by_id.get(completion_id)
+        # Only return if it belongs to the requesting user
+        if completion and completion_id in [c["completion_id"] for c in self.completions_by_user.get(user_id, [])]:
+            return completion
+        return None
+
+    def create_comment(
+        self,
+        completion_id: str,
+        user_id: str,
+        user_display_name: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment on a completion."""
+        comment = {
+            "comment_id": str(uuid4()),
+            "completion_id": completion_id,
+            "user_id": user_id,
+            "user_display_name": user_display_name,
+            "text": payload["text"],
+            "parent_comment_id": payload.get("parent_comment_id"),
+            "created_at": utc_now_iso(),
+            "updated_at": utc_now_iso(),
+            "reply_count": 0,
+        }
+        self.comments_by_completion.setdefault(completion_id, []).append(comment)
+        return comment
+
+    def list_comments(self, completion_id: str) -> list[dict[str, Any]]:
+        """List all top-level comments for a completion."""
+        comments = self.comments_by_completion.get(completion_id, [])
+        # Return only top-level comments (no parent_comment_id)
+        top_level = [c for c in comments if not c.get("parent_comment_id")]
+        return sorted(top_level, key=lambda x: x.get("created_at", ""), reverse=True)
+
+    def delete_comment(self, completion_id: str, comment_id: str, user_id: str) -> bool:
+        """Delete a comment (only owner can delete)."""
+        comments = self.comments_by_completion.get(completion_id, [])
+        for comment in comments:
+            if comment["comment_id"] == comment_id:
+                if comment["user_id"] == user_id:
+                    comments.remove(comment)
+                    return True
+                return False
+        return False
