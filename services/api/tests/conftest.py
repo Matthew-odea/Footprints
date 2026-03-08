@@ -11,6 +11,7 @@ def reset_memory_store() -> None:
     MemoryDataStore.users_by_id = {}
     MemoryDataStore.prompts_by_id = {}
     MemoryDataStore.completions_by_user = {}
+    MemoryDataStore.completions_by_id = {}
 
 
 @pytest.fixture()
