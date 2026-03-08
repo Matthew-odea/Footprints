@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     api_prefix: str = "/api/v1"
     jwt_secret: str = "change-me"
+    jwt_secret_name: str = ""
     jwt_algorithm: str = "HS256"
     jwt_exp_minutes: int = 60 * 24
 

@@ -15,6 +15,7 @@ Globals:
         API_DYNAMODB_TABLE_CORE: footprints_core
         API_S3_BUCKET: footprints-dev-completions
         API_S3_COMPLETIONS_PREFIX: completions/
+        JWT_SECRET_NAME: footprints/jwt-secret
         JWT_SECRET: change-me
         JWT_ALGORITHM: HS256
         JWT_EXP_MINUTES: '1440'
@@ -31,6 +32,11 @@ Resources:
             TableName: footprints_core
         - S3CrudPolicy:
             BucketName: footprints-dev-completions
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:footprints/jwt-secret-*'
       Events:
         ApiEvent:
           Type: HttpApi
