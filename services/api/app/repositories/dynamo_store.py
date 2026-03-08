@@ -13,8 +13,23 @@ from app.repositories.storage_base import DataStore, utc_now_iso
 class DynamoDataStore(DataStore):
     def __init__(self, settings: Settings):
         self.settings = settings
-        resource = boto3.resource("dynamodb", region_name=settings.aws_region)
-        self.table = resource.Table(settings.api_dynamodb_table_core)
+        self._table = None
+        self._resource = None
+
+    @property
+    def table(self):
+        """Lazy load DynamoDB table on first access."""
+        if self._table is None:
+            try:
+                self._resource = boto3.resource("dynamodb", region_name=self.settings.aws_region)
+                self._table = self._resource.Table(self.settings.api_dynamodb_table_core)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to connect to DynamoDB table '{self.settings.api_dynamodb_table_core}'. "
+                    f"Ensure DynamoDB is running and AWS credentials are configured. "
+                    f"For development, use STORAGE_BACKEND=memory in .env. Error: {e}"
+                ) from e
+        return self._table
 
     def get_or_create_user(self, username: str) -> dict[str, Any]:
         lookup = self.table.get_item(
