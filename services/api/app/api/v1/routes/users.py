@@ -5,7 +5,7 @@ from app.schemas.settings import SettingsUpdateRequest
 from app.schemas.users import UserProfile, UserResponse, UserSettings
 from app.services.user_service import UserService
 
-router = APIRouter(prefix="", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserResponse)

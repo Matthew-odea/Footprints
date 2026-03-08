@@ -12,12 +12,14 @@ def reset_memory_store() -> None:
     MemoryDataStore.users_by_id.clear()
     MemoryDataStore.prompts_by_id.clear()
     MemoryDataStore.completions_by_user.clear()
+    MemoryDataStore.friendships.clear()
     yield
     # Cleanup after test as well
     MemoryDataStore.users_by_username.clear()
     MemoryDataStore.users_by_id.clear()
     MemoryDataStore.prompts_by_id.clear()
     MemoryDataStore.completions_by_user.clear()
+    MemoryDataStore.friendships.clear()
 
 
 @pytest.fixture()

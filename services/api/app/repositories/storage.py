@@ -58,12 +58,38 @@ class DataStore(ABC):
         """Seed sample friend relationships for testing."""
         raise NotImplementedError
 
+    @abstractmethod
+    def add_friend(self, user_id: str, friend_username: str) -> dict[str, Any]:
+        """Add a friend (creates friendship with pending/accepted status)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_friend(self, user_id: str, friend_id: str) -> bool:
+        """Remove a friend (soft delete or mark as removed)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_friends(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of friends for a user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_friend_status(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
+        """Get friendship status between two users."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def search_users(self, query: str, exclude_user_id: str | None = None) -> list[dict[str, Any]]:
+        """Search for users by username or display name."""
+        raise NotImplementedError
+
 
 class MemoryDataStore(DataStore):
     users_by_username: dict[str, dict[str, Any]] = {}
     users_by_id: dict[str, dict[str, Any]] = {}
     prompts_by_id: dict[str, dict[str, Any]] = {}
     completions_by_user: dict[str, list[dict[str, Any]]] = {}
+    friendships: dict[str, list[dict[str, Any]]] = {}
 
     def get_or_create_user(self, username: str) -> dict[str, Any]:
         existing = self.users_by_username.get(username)
@@ -147,8 +173,91 @@ class MemoryDataStore(DataStore):
             self.prompts_by_id[prompt["id"]] = prompt
 
     def seed_friends(self, friendships: list[tuple[str, str]]) -> None:
-        """Seed sample friend relationships (not used in memory store for MVP)."""
-        pass
+        """Seed sample friend relationships."""
+        for user_id, friend_id in friendships:
+            self._add_friendship(user_id, friend_id, "accepted")
+
+    def add_friend(self, user_id: str, friend_username: str) -> dict[str, Any]:
+        """Add a friend by username."""
+        # Find friend by username
+        friend = self.users_by_username.get(friend_username)
+        if not friend:
+            raise ValueError(f"User {friend_username} not found")
+
+        friend_id = friend["user_id"]
+
+        # Check if already friends
+        existing = self._get_friendship(user_id, friend_id)
+        if existing:
+            return existing
+
+        # Create new friendship
+        friendship = {
+            "friend_id": friend_id,
+            "username": friend["username"],
+            "display_name": friend["display_name"],
+            "status": "accepted",
+            "created_at": utc_now_iso(),
+        }
+
+        self.friendships.setdefault(user_id, []).append(friendship)
+
+        return friendship
+
+    def remove_friend(self, user_id: str, friend_id: str) -> bool:
+        """Remove a friend."""
+        friends = self.friendships.get(user_id, [])
+        self.friendships[user_id] = [f for f in friends if f["friend_id"] != friend_id]
+        return True
+
+    def get_friends(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of friends for a user."""
+        return self.friendships.get(user_id, [])
+
+    def get_friend_status(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
+        """Get friendship status between two users."""
+        return self._get_friendship(user_id, friend_id)
+
+    def search_users(self, query: str, exclude_user_id: str | None = None) -> list[dict[str, Any]]:
+        """Search for users by username or display name."""
+        results = []
+        query_lower = query.lower()
+
+        for user in self.users_by_id.values():
+            if exclude_user_id and user["user_id"] == exclude_user_id:
+                continue
+
+            if (
+                query_lower in user["username"].lower()
+                or query_lower in user["display_name"].lower()
+            ):
+                results.append({
+                    "user_id": user["user_id"],
+                    "username": user["username"],
+                    "display_name": user["display_name"],
+                })
+
+        return results
+
+    def _add_friendship(self, user_id: str, friend_id: str, status: str) -> None:
+        """Internal helper to add friendship."""
+        friend = self.users_by_id.get(friend_id)
+        if not friend:
+            return
+
+        friendship = {
+            "friend_id": friend_id,
+            "username": friend["username"],
+            "display_name": friend["display_name"],
+            "status": status,
+            "created_at": utc_now_iso(),
+        }
+        self.friendships.setdefault(user_id, []).append(friendship)
+
+    def _get_friendship(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
+        """Internal helper to get friendship."""
+        friends = self.friendships.get(user_id, [])
+        return next((f for f in friends if f["friend_id"] == friend_id), None)
 
 
 class DynamoDataStore(DataStore):
@@ -420,6 +529,112 @@ class DynamoDataStore(DataStore):
                         "createdAt": utc_now_iso(),
                     }
                 )
+
+    def add_friend(self, user_id: str, friend_username: str) -> dict[str, Any]:
+        """Add a friend by username."""
+        # Look up user by username
+        lookup_response = self.table.get_item(
+            Key={"PK": f"USERNAME#{friend_username}", "SK": "LOOKUP"}
+        )
+        if "Item" not in lookup_response:
+            raise ValueError(f"User {friend_username} not found")
+
+        friend_id = lookup_response["Item"]["userId"]
+
+        # Check if already friends
+        existing = self.table.get_item(
+            Key={"PK": f"USER#{user_id}", "SK": f"FRIEND#{friend_id}"}
+        )
+        if "Item" in existing:
+            return self._friendship_from_item(existing["Item"])
+
+        # Get friend profile for display
+        friend_response = self.table.get_item(
+            Key={"PK": f"USER#{friend_id}", "SK": "PROFILE"}
+        )
+        friend_item = friend_response.get("Item", {})
+
+        # Create new friendship
+        friendship_item = {
+            "PK": f"USER#{user_id}",
+            "SK": f"FRIEND#{friend_id}",
+            "entityType": "FRIENDSHIP",
+            "status": "accepted",
+            "createdAt": utc_now_iso(),
+        }
+        self.table.put_item(Item=friendship_item)
+
+        return {
+            "friend_id": friend_id,
+            "username": friend_item.get("username", friend_username),
+            "display_name": friend_item.get("displayName", friend_username),
+            "status": "accepted",
+            "created_at": utc_now_iso(),
+        }
+
+    def remove_friend(self, user_id: str, friend_id: str) -> bool:
+        """Remove a friend."""
+        self.table.delete_item(
+            Key={"PK": f"USER#{user_id}", "SK": f"FRIEND#{friend_id}"}
+        )
+        return True
+
+    def get_friends(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of friends for a user."""
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("FRIEND#"),
+            FilterExpression=Attr("entityType").eq("FRIENDSHIP"),
+        )
+        return [self._friendship_from_item(item) for item in response.get("Items", [])]
+
+    def get_friend_status(self, user_id: str, friend_id: str) -> dict[str, Any] | None:
+        """Get friendship status between two users."""
+        response = self.table.get_item(
+            Key={"PK": f"USER#{user_id}", "SK": f"FRIEND#{friend_id}"}
+        )
+        if "Item" not in response:
+            return None
+        return self._friendship_from_item(response["Item"])
+
+    def search_users(self, query: str, exclude_user_id: str | None = None) -> list[dict[str, Any]]:
+        """Search for users by username or display name."""
+        # For MVP, do a full table scan on PROFILE items
+        # In production, would use a GSI for username prefix search
+        response = self.table.scan(
+            FilterExpression=Attr("entityType").eq("USER_PROFILE")
+        )
+        
+        results = []
+        query_lower = query.lower()
+
+        for item in response.get("Items", []):
+            user_id = item.get("userId")
+            if exclude_user_id and user_id == exclude_user_id:
+                continue
+
+            username = item.get("username", "").lower()
+            display_name = item.get("displayName", "").lower()
+
+            if query_lower in username or query_lower in display_name:
+                results.append({
+                    "user_id": user_id,
+                    "username": item.get("username"),
+                    "display_name": item.get("displayName"),
+                })
+
+        return results
+
+    def _friendship_from_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        """Convert DynamoDB item to friendship dict."""
+        friend_id = item["SK"].replace("FRIEND#", "")
+        friend = self.get_user(friend_id)
+        return {
+            "friend_id": friend_id,
+            "username": friend.get("username", "") if friend else "",
+            "display_name": friend.get("display_name", "") if friend else "",
+            "status": item.get("status", "accepted"),
+            "created_at": item.get("createdAt", ""),
+        }
 
     def _get_user_display_name(self, user_id: str) -> str:
         """Helper to get user display name."""

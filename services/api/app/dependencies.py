@@ -8,6 +8,7 @@ from app.core.security import AuthError, decode_access_token
 from app.repositories.storage import DataStore, DynamoDataStore, MemoryDataStore
 from app.services.auth_service import AuthService
 from app.services.completion_service import CompletionService
+from app.services.friend_service import FriendService
 from app.services.prompt_service import PromptService
 from app.services.user_service import UserService
 
@@ -54,3 +55,7 @@ def get_completion_service(store: DataStore = Depends(get_store)) -> CompletionS
 
 def get_user_service(store: DataStore = Depends(get_store)) -> UserService:
     return UserService(store=store)
+
+
+def get_friend_service(store: DataStore = Depends(get_store)) -> FriendService:
+    return FriendService(store=store)
