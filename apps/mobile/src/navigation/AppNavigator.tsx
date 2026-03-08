@@ -2,6 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { HomeScreen } from "../screens/HomeScreen";
 import { HistoryScreen } from "../screens/HistoryScreen";
 import { FeedScreen } from "../screens/FeedScreen";
@@ -30,34 +31,36 @@ export function AppNavigator() {
     const { token } = useAuth();
 
     return (
-        <NavigationContainer>
-            <RootStack.Navigator>
-                {!token ? (
-                    <RootStack.Screen
-                        name="Login"
-                        component={LoginScreen}
-                        options={{ headerShown: false }}
-                    />
-                ) : (
-                    <>
+        <ErrorBoundary>
+            <NavigationContainer>
+                <RootStack.Navigator>
+                    {!token ? (
                         <RootStack.Screen
-                            name="AppTabs"
-                            component={AppTabs}
+                            name="Login"
+                            component={LoginScreen}
                             options={{ headerShown: false }}
                         />
-                        <RootStack.Screen
-                            name="PromptDetail"
-                            component={PromptDetailScreen}
-                            options={{ title: "Prompt details" }}
-                        />
-                        <RootStack.Screen
-                            name="PromptUpload"
-                            component={PromptUploadScreen}
-                            options={{ title: "Upload completion" }}
-                        />
-                    </>
-                )}
-            </RootStack.Navigator>
-        </NavigationContainer>
+                    ) : (
+                        <>
+                            <RootStack.Screen
+                                name="AppTabs"
+                                component={AppTabs}
+                                options={{ headerShown: false }}
+                            />
+                            <RootStack.Screen
+                                name="PromptDetail"
+                                component={PromptDetailScreen}
+                                options={{ title: "Prompt details" }}
+                            />
+                            <RootStack.Screen
+                                name="PromptUpload"
+                                component={PromptUploadScreen}
+                                options={{ title: "Upload completion" }}
+                            />
+                        </>
+                    )}
+                </RootStack.Navigator>
+            </NavigationContainer>
+        </ErrorBoundary>
     );
 }
