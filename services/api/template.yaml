@@ -8,7 +8,7 @@ Globals:
     Timeout: 30
     MemorySize: 512
     Architectures:
-      - arm64
+      - x86_64
     Environment:
       Variables:
         STORAGE_BACKEND: dynamodb
@@ -25,7 +25,7 @@ Resources:
     Properties:
       CodeUri: .
       Handler: handler.handler
-      Runtime: python3.13
+      Runtime: python3.12
       Policies:
         - DynamoDBCrudPolicy:
             TableName: footprints_core
