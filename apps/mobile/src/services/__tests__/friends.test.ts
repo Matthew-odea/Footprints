@@ -1,4 +1,13 @@
-import { listFriends, searchUsers, addFriend, removeFriend } from '../friends';
+import {
+  acceptFriendRequest,
+  addFriend,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  listFriends,
+  rejectFriendRequest,
+  removeFriend,
+  searchUsers,
+} from '../friends';
 
 // Mock constants
 jest.mock('../../lib/constants', () => ({
@@ -175,6 +184,125 @@ describe('friends API client', () => {
       });
 
       await expect(removeFriend(mockToken, '999')).rejects.toThrow('Not Found');
+    });
+  });
+
+  describe('friend requests', () => {
+    it('should fetch incoming requests', async () => {
+      const mockResponse = {
+        items: [
+          {
+            request_id: 'req-1',
+            user_id: 'user-2',
+            username: 'bob',
+            display_name: 'Bob Smith',
+            created_at: '2026-03-01T00:00:00Z',
+            direction: 'incoming',
+          },
+        ],
+        total: 1,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await getIncomingFriendRequests(mockToken);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_BASE_URL}/api/v1/friends/requests/incoming`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${mockToken}`,
+          },
+        }
+      );
+      expect(result).toEqual(mockResponse.items);
+    });
+
+    it('should fetch outgoing requests', async () => {
+      const mockResponse = {
+        items: [
+          {
+            request_id: 'req-2',
+            user_id: 'user-3',
+            username: 'charlie',
+            display_name: 'Charlie Brown',
+            created_at: '2026-03-01T00:00:00Z',
+            direction: 'outgoing',
+          },
+        ],
+        total: 1,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await getOutgoingFriendRequests(mockToken);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_BASE_URL}/api/v1/friends/requests/outgoing`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${mockToken}`,
+          },
+        }
+      );
+      expect(result).toEqual(mockResponse.items);
+    });
+
+    it('should accept an incoming request', async () => {
+      const mockResponse = {
+        friend_id: 'user-2',
+        username: 'bob',
+        display_name: 'Bob Smith',
+        status: 'accepted',
+        accepted_at: '2026-03-01T00:00:00Z',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await acceptFriendRequest(mockToken, 'req-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_BASE_URL}/api/v1/friends/requests/req-1/accept`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${mockToken}`,
+          },
+        }
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should reject an incoming request', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      });
+
+      await rejectFriendRequest(mockToken, 'req-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_BASE_URL}/api/v1/friends/requests/req-1/reject`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${mockToken}`,
+          },
+        }
+      );
     });
   });
 });

@@ -14,6 +14,17 @@ jest.spyOn(Alert, 'alert');
 describe('FriendsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
+    (friendsAPI.getIncomingFriendRequests as jest.Mock).mockResolvedValue([]);
+    (friendsAPI.getOutgoingFriendRequests as jest.Mock).mockResolvedValue([]);
+    (friendsAPI.acceptFriendRequest as jest.Mock).mockResolvedValue({
+      friend_id: '1',
+      username: 'bob',
+      display_name: 'Bob Smith',
+      status: 'accepted',
+      accepted_at: '2026-03-01T00:00:00Z',
+    });
+    (friendsAPI.rejectFriendRequest as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('should render empty state when no friends', async () => {
@@ -77,8 +88,6 @@ describe('FriendsScreen', () => {
   });
 
   it('should show add friend modal when add button pressed', async () => {
-    (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
-
     const { getByText, getByPlaceholderText } = render(
       <FriendsScreen />
     );
@@ -100,7 +109,6 @@ describe('FriendsScreen', () => {
       { friend_id: null, username: 'bobby', display_name: 'Bobby Tables', status: 'none', created_at: '2026-01-01T00:00:00Z' },
     ];
 
-    (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
     (friendsAPI.searchUsers as jest.Mock).mockResolvedValue(mockSearchResults);
 
     const { getByText, getByPlaceholderText } = render(
@@ -137,7 +145,6 @@ describe('FriendsScreen', () => {
       created_at: '2026-01-01T00:00:00Z',
     };
 
-    (friendsAPI.listFriends as jest.Mock).mockResolvedValue([]);
     (friendsAPI.addFriend as jest.Mock).mockResolvedValue(mockNewFriend);
 
     const { getByText } = render(
@@ -235,5 +242,88 @@ describe('FriendsScreen', () => {
 
     // After adding friend, list should be reloaded
     // This would be verified through the component's behavior
+  });
+
+  it('should render incoming and outgoing request sections', async () => {
+    (friendsAPI.getIncomingFriendRequests as jest.Mock).mockResolvedValue([
+      {
+        request_id: 'req-1',
+        user_id: 'user-2',
+        username: 'bob',
+        display_name: 'Bob Smith',
+        created_at: '2026-03-01T00:00:00Z',
+        direction: 'incoming',
+      },
+    ]);
+    (friendsAPI.getOutgoingFriendRequests as jest.Mock).mockResolvedValue([
+      {
+        request_id: 'req-2',
+        user_id: 'user-3',
+        username: 'charlie',
+        display_name: 'Charlie Brown',
+        created_at: '2026-03-01T00:00:00Z',
+        direction: 'outgoing',
+      },
+    ]);
+
+    const { getByText } = render(<FriendsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Incoming Requests')).toBeTruthy();
+      expect(getByText('Outgoing Requests')).toBeTruthy();
+      expect(getByText('Accept')).toBeTruthy();
+      expect(getByText('Reject')).toBeTruthy();
+      expect(getByText('Pending')).toBeTruthy();
+    });
+  });
+
+  it('should accept an incoming friend request', async () => {
+    (friendsAPI.getIncomingFriendRequests as jest.Mock).mockResolvedValue([
+      {
+        request_id: 'req-1',
+        user_id: 'user-2',
+        username: 'bob',
+        display_name: 'Bob Smith',
+        created_at: '2026-03-01T00:00:00Z',
+        direction: 'incoming',
+      },
+    ]);
+
+    const { getByText } = render(<FriendsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Accept')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(friendsAPI.acceptFriendRequest).toHaveBeenCalledWith('mock-token', 'req-1');
+    });
+  });
+
+  it('should reject an incoming friend request', async () => {
+    (friendsAPI.getIncomingFriendRequests as jest.Mock).mockResolvedValue([
+      {
+        request_id: 'req-1',
+        user_id: 'user-2',
+        username: 'bob',
+        display_name: 'Bob Smith',
+        created_at: '2026-03-01T00:00:00Z',
+        direction: 'incoming',
+      },
+    ]);
+
+    const { getByText } = render(<FriendsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Reject')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reject'));
+
+    await waitFor(() => {
+      expect(friendsAPI.rejectFriendRequest).toHaveBeenCalledWith('mock-token', 'req-1');
+    });
   });
 });

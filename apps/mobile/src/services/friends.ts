@@ -1,4 +1,10 @@
-import { FriendItem, FriendsListResponse } from "../types/api";
+import {
+    AcceptFriendRequestResponse,
+    FriendItem,
+    FriendRequestItem,
+    FriendRequestsListResponse,
+    FriendsListResponse,
+} from "../types/api";
 import { API_BASE_URL } from "../lib/constants";
 
 async function request<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
@@ -44,5 +50,30 @@ export async function addFriend(token: string, username: string): Promise<Friend
 export async function removeFriend(token: string, friendId: string): Promise<void> {
     await request<void>(`/api/v1/friends/${friendId}`, token, {
         method: "DELETE",
+    });
+}
+
+export async function getIncomingFriendRequests(token: string): Promise<FriendRequestItem[]> {
+    const result = await request<FriendRequestsListResponse>("/api/v1/friends/requests/incoming", token);
+    return result.items;
+}
+
+export async function getOutgoingFriendRequests(token: string): Promise<FriendRequestItem[]> {
+    const result = await request<FriendRequestsListResponse>("/api/v1/friends/requests/outgoing", token);
+    return result.items;
+}
+
+export async function acceptFriendRequest(
+    token: string,
+    requestId: string
+): Promise<AcceptFriendRequestResponse> {
+    return request<AcceptFriendRequestResponse>(`/api/v1/friends/requests/${requestId}/accept`, token, {
+        method: "POST",
+    });
+}
+
+export async function rejectFriendRequest(token: string, requestId: string): Promise<void> {
+    await request<void>(`/api/v1/friends/requests/${requestId}/reject`, token, {
+        method: "POST",
     });
 }

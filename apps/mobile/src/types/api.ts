@@ -37,14 +37,38 @@ export type UserResponse = {
 };
 
 export type FriendItem = {
+    request_id?: string;
     friend_id: string;
     username: string;
     display_name: string;
     status: string;
     created_at: string;
+    requested_by?: string;
 };
 
 export type FriendsListResponse = {
     items: FriendItem[];
     total: number;
+};
+
+export type FriendRequestItem = {
+    request_id: string;
+    user_id: string;
+    username: string;
+    display_name: string;
+    created_at: string;
+    direction: "incoming" | "outgoing";
+};
+
+export type FriendRequestsListResponse = {
+    items: FriendRequestItem[];
+    total: number;
+};
+
+export type AcceptFriendRequestResponse = {
+    friend_id: string;
+    username: string;
+    display_name: string;
+    status: string;
+    accepted_at: string;
 };
