@@ -1,6 +1,7 @@
 // Photo upload service for S3 and API interactions.
 
 import * as FileSystem from "expo-file-system";
+import { API_BASE_URL } from "../lib/constants";
 
 export interface UploadUrlResponse {
   upload_url: string;
@@ -30,7 +31,6 @@ export async function requestUploadUrl(
   token: string,
   fileType: string
 ): Promise<UploadUrlResponse> {
-  const { API_BASE_URL } = require("./constants");
   const response = await fetch(`${API_BASE_URL}/api/v1/uploads`, {
     method: "POST",
     headers: {
@@ -91,8 +91,6 @@ export async function getFeed(
   limit: number = 20,
   cursor?: string
 ): Promise<FeedResponse> {
-  const { API_BASE_URL } = require("./constants");
-  
   const params = new URLSearchParams({
     limit: limit.toString(),
     ...(cursor && { cursor }),
