@@ -33,6 +33,13 @@ def get_current_user_id(
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
+def get_current_user(
+    user_id: str = Depends(get_current_user_id),
+) -> dict:
+    """Get current user as a dict with user_id."""
+    return {"user_id": user_id}
+
+
 def get_auth_service(store: DataStore = Depends(get_store)) -> AuthService:
     return AuthService(store=store)
 

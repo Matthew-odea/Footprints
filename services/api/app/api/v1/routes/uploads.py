@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter, Depends
 
-from app.core.auth import get_current_user
 from app.core.aws import get_s3_service, S3Service
+from app.dependencies import get_current_user
 from app.schemas.uploads import UploadUrlRequest, UploadUrlResponse
 
 router = APIRouter()

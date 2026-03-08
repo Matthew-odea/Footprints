@@ -2,8 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.auth import get_current_user
-from app.dependencies import get_store
+from app.dependencies import get_current_user, get_store
 from app.repositories.storage import DataStore
 from app.schemas.feed import FeedResponse
 
