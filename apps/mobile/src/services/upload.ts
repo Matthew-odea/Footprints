@@ -89,10 +89,12 @@ export async function uploadPhotoToS3(
 export async function getFeed(
   token: string,
   limit: number = 20,
-  cursor?: string
+  cursor?: string,
+  scope: "all" | "friends" = "all"
 ): Promise<FeedResponse> {
   const params = new URLSearchParams({
     limit: limit.toString(),
+    scope,
     ...(cursor && { cursor }),
   });
 

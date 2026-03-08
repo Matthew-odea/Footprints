@@ -16,6 +16,7 @@ import { useAuth } from "../state/AuthContext";
 export function FeedScreen() {
     const { token } = useAuth();
     const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+    const [scope, setScope] = useState<"all" | "friends">("all");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [cursor, setCursor] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function FeedScreen() {
                 return;
             }
 
-            const result = await getFeed(token, 20, nextCursor);
+            const result = await getFeed(token, 20, nextCursor, scope);
             if (nextCursor) {
                 setFeedItems((prev) => [...prev, ...result.items]);
             } else {
@@ -53,7 +54,7 @@ export function FeedScreen() {
             setFeedItems([]);
             setCursor(null);
             loadFeed();
-        }, [token])
+        }, [token, scope])
     );
 
     const onRefresh = () => {
@@ -143,23 +144,66 @@ export function FeedScreen() {
     }
 
     return (
-        <FlatList
-            data={feedItems}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.completion_id}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={renderEmpty}
-            ListFooterComponent={renderFooter}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.5}
-        />
+        <View style={styles.container}>
+            <View style={styles.toggleRow}>
+                <TouchableOpacity
+                    style={[styles.toggleButton, scope === "all" && styles.toggleButtonActive]}
+                    onPress={() => setScope("all")}
+                >
+                    <Text style={[styles.toggleText, scope === "all" && styles.toggleTextActive]}>All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.toggleButton, scope === "friends" && styles.toggleButtonActive]}
+                    onPress={() => setScope("friends")}
+                >
+                    <Text style={[styles.toggleText, scope === "friends" && styles.toggleTextActive]}>Friends</Text>
+                </TouchableOpacity>
+            </View>
+
+            <FlatList
+                data={feedItems}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.completion_id}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={renderEmpty}
+                ListFooterComponent={renderFooter}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+                onEndReached={onEndReached}
+                onEndReachedThreshold={0.5}
+            />
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    toggleRow: {
+        flexDirection: "row",
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+    },
+    toggleButton: {
+        borderWidth: 1,
+        borderColor: "#007AFF",
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+    },
+    toggleButtonActive: {
+        backgroundColor: "#007AFF",
+    },
+    toggleText: {
+        color: "#007AFF",
+        fontWeight: "600",
+    },
+    toggleTextActive: {
+        color: "#fff",
+    },
     centerContainer: {
         flex: 1,
         justifyContent: "center",

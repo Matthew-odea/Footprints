@@ -73,7 +73,7 @@ export async function getHistory(token: string): Promise<CompletionItem[]> {
 }
 
 export async function getMe(token: string): Promise<UserResponse> {
-    return request<UserResponse>("/api/v1/me", {
+    return request<UserResponse>("/api/v1/users/me", {
         headers: {
             Authorization: `Bearer ${token}`,
         },
@@ -81,7 +81,7 @@ export async function getMe(token: string): Promise<UserResponse> {
 }
 
 export async function updateSettings(token: string, shareByDefault: boolean): Promise<UserResponse> {
-    return request<UserResponse>("/api/v1/me/settings", {
+    return request<UserResponse>("/api/v1/users/me/settings", {
         method: "PATCH",
         headers: {
             Authorization: `Bearer ${token}`,

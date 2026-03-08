@@ -168,6 +168,79 @@ def test_feed_endpoint_pagination(client: TestClient) -> None:
     assert "next_cursor" in feed_data
 
 
+def test_feed_scope_friends_filters_non_friends(client: TestClient) -> None:
+    """Test that friends scope only returns accepted friends' completions."""
+    user1_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "alice", "password": "password123"},
+    )
+    assert user1_login.status_code == 200
+    token1 = user1_login.json()["access_token"]
+    headers1 = {"Authorization": f"Bearer {token1}"}
+
+    user2_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "bob", "password": "password123"},
+    )
+    assert user2_login.status_code == 200
+    token2 = user2_login.json()["access_token"]
+    headers2 = {"Authorization": f"Bearer {token2}"}
+
+    user3_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "charlie", "password": "password123"},
+    )
+    assert user3_login.status_code == 200
+    token3 = user3_login.json()["access_token"]
+    headers3 = {"Authorization": f"Bearer {token3}"}
+
+    prompts_response = client.get("/api/v1/prompts/active", headers=headers1)
+    assert prompts_response.status_code == 200
+    prompt_id = prompts_response.json()["items"][0]["id"]
+
+    bob_completion = client.post(
+        "/api/v1/completions",
+        headers=headers2,
+        json={
+            "prompt_id": prompt_id,
+            "note": "bob completion",
+            "date": "2026-03-08",
+            "location": "Park",
+            "photo_url": "",
+            "share_with_friends": True,
+        },
+    )
+    assert bob_completion.status_code == 200
+
+    charlie_completion = client.post(
+        "/api/v1/completions",
+        headers=headers3,
+        json={
+            "prompt_id": prompt_id,
+            "note": "charlie completion",
+            "date": "2026-03-08",
+            "location": "Trail",
+            "photo_url": "",
+            "share_with_friends": True,
+        },
+    )
+    assert charlie_completion.status_code == 200
+
+    add_friend = client.post(
+        "/api/v1/friends",
+        headers=headers1,
+        json={"username": "bob"},
+    )
+    assert add_friend.status_code == 201
+
+    feed_response = client.get("/api/v1/feed?scope=friends", headers=headers1)
+    assert feed_response.status_code == 200
+
+    notes = [item["note"] for item in feed_response.json()["items"]]
+    assert "bob completion" in notes
+    assert "charlie completion" not in notes
+
+
 def test_feed_endpoint_requires_auth(client: TestClient) -> None:
     """Test that feed endpoint requires authentication."""
     feed_response = client.get("/api/v1/feed")

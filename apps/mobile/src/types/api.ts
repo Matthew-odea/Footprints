@@ -34,3 +34,16 @@ export type UserResponse = {
     };
     completed_count: number;
 };
+
+export type FriendItem = {
+    friend_id: string;
+    username: string;
+    display_name: string;
+    status: string;
+    created_at: string;
+};
+
+export type FriendsListResponse = {
+    items: FriendItem[];
+    total: number;
+};

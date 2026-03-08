@@ -45,7 +45,13 @@ class DataStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    def get_feed(
+        self,
+        user_id: str,
+        limit: int = 20,
+        cursor: str | None = None,
+        scope: str = "all",
+    ) -> tuple[list[dict[str, Any]], str | None]:
         """Get feed items (completions from friends or all public completions for MVP)."""
         raise NotImplementedError
 
@@ -146,10 +152,24 @@ class MemoryDataStore(DataStore):
         items = self.completions_by_user.get(user_id, [])
         return list(reversed(items))
 
-    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
-        """Return all public completions (MVP version without friend filtering)."""
+    def get_feed(
+        self,
+        user_id: str,
+        limit: int = 20,
+        cursor: str | None = None,
+        scope: str = "all",
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """Return public completions with optional friends-only filtering."""
+        friend_ids = {
+            item["friend_id"]
+            for item in self.friendships.get(user_id, [])
+            if item.get("status") == "accepted"
+        }
+
         all_completions = []
         for uid, completions in self.completions_by_user.items():
+            if scope == "friends" and uid not in friend_ids:
+                continue
             for completion in completions:
                 if completion.get("share_with_friends", True):
                     all_completions.append({
@@ -395,6 +415,7 @@ class DynamoDataStore(DataStore):
             "PK": f"USER#{user_id}",
             "SK": f"COMP#{created_at}#{completion_id}",
             "entityType": "COMPLETION",
+            "userId": user_id,
             "completionId": completion_id,
             "promptId": payload["prompt_id"],
             "promptTitle": prompt_title,
@@ -477,7 +498,13 @@ class DynamoDataStore(DataStore):
                     }
                 )
 
-    def get_feed(self, user_id: str, limit: int = 20, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    def get_feed(
+        self,
+        user_id: str,
+        limit: int = 20,
+        cursor: str | None = None,
+        scope: str = "all",
+    ) -> tuple[list[dict[str, Any]], str | None]:
         """
         Get recent public completions for feed (MVP: all public completions).
         In production, would filter by friend relationships.
@@ -488,23 +515,48 @@ class DynamoDataStore(DataStore):
         )
         
         items = response.get("Items", [])
+
+        if scope == "friends":
+            friends_response = self.table.query(
+                KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("FRIEND#"),
+                FilterExpression=Attr("entityType").eq("FRIENDSHIP") & Attr("status").eq("accepted"),
+            )
+            friend_ids = {
+                item.get("SK", "").replace("FRIEND#", "")
+                for item in friends_response.get("Items", [])
+            }
+            def completion_user_id(entry: dict[str, Any]) -> str:
+                direct = entry.get("userId", "")
+                if direct:
+                    return str(direct)
+                pk = str(entry.get("PK", ""))
+                return pk.replace("USER#", "") if pk.startswith("USER#") else ""
+
+            items = [item for item in items if completion_user_id(item) in friend_ids]
         
         # Convert items to feed format
-        feed_items = [
-            {
-                "completion_id": item.get("completionId", ""),
-                "user_id": item.get("userId", ""),
-                "user_display_name": self._get_user_display_name(item.get("userId", "")),
-                "prompt_id": item.get("promptId", ""),
-                "prompt_title": item.get("promptTitle", ""),
-                "photo_url": item.get("photoUrl", ""),
-                "note": item.get("note", ""),
-                "location": item.get("location", ""),
-                "date": item.get("date", ""),
-                "created_at": item.get("createdAt", ""),
-            }
-            for item in items
-        ]
+        feed_items = []
+        for item in items:
+            user_id_for_item = item.get("userId", "")
+            if not user_id_for_item:
+                pk = str(item.get("PK", ""))
+                if pk.startswith("USER#"):
+                    user_id_for_item = pk.replace("USER#", "")
+
+            feed_items.append(
+                {
+                    "completion_id": item.get("completionId", ""),
+                    "user_id": user_id_for_item,
+                    "user_display_name": self._get_user_display_name(user_id_for_item),
+                    "prompt_id": item.get("promptId", ""),
+                    "prompt_title": item.get("promptTitle", ""),
+                    "photo_url": item.get("photoUrl", ""),
+                    "note": item.get("note", ""),
+                    "location": item.get("location", ""),
+                    "date": item.get("date", ""),
+                    "created_at": item.get("createdAt", ""),
+                }
+            )
         
         # Sort by created_at descending
         feed_items.sort(key=lambda x: x.get("created_at", ""), reverse=True)

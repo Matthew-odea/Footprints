@@ -8,6 +8,7 @@ export type RootStackParamList = {
 export type AppTabParamList = {
     Home: undefined;
     Feed: undefined;
+    Friends: undefined;
     History: undefined;
     Settings: undefined;
 };
