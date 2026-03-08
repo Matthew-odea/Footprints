@@ -1,8 +1,9 @@
 """Friend management endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.dependencies import get_current_user, get_friend_service
+from app.middleware.rate_limiter import get_rate_limiter, RATE_LIMITS, RateLimiter
 from app.schemas.friends import (
     AddFriendRequest,
     FriendItem,
@@ -17,14 +18,36 @@ router = APIRouter(prefix="/friends", tags=["friends"])
 @router.post("", status_code=201)
 async def add_friend(
     request: AddFriendRequest,
+    response: Response,
     current_user: dict = Depends(get_current_user),
     service: FriendService = Depends(get_friend_service),
+    limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> FriendItem:
     """
     Add a friend by username.
     
     Returns the new friendship details.
+    Rate limited to 5 requests per minute.
     """
+    # Apply rate limiting
+    limit_config = RATE_LIMITS["add_friend"]
+    allowed, current_count, retry_after = limiter.check_rate_limit(
+        key=f"add_friend:{current_user['user_id']}",
+        max_requests=limit_config["requests"],
+        window_seconds=limit_config["window_seconds"],
+    )
+    
+    # Add rate limit headers
+    response.headers["X-RateLimit-Limit"] = str(limit_config["requests"])
+    response.headers["X-RateLimit-Remaining"] = str(max(0, limit_config["requests"] - current_count))
+    
+    if not allowed:
+        response.headers["Retry-After"] = str(retry_after)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
+        )
+    
     result = service.add_friend(current_user["user_id"], request.username)
     return FriendItem(**result)
 
@@ -62,15 +85,38 @@ async def list_friends(
 
 @router.get("/search", response_model=FriendsListResponse)
 async def search_users(
+    response: Response,
     q: str = Query(..., min_length=2, description="Search query"),
     current_user: dict = Depends(get_current_user),
     service: FriendService = Depends(get_friend_service),
+    limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> FriendsListResponse:
     """
     Search for users to add as friends.
     
     Returns matching users by username or display name.
+    Rate limited to 10 requests per minute.
     """
+    # Apply rate limiting
+    limit_config = RATE_LIMITS["search_users"]
+    allowed, current_count, retry_after = limiter.check_rate_limit(
+        key=f"search:{current_user['user_id']}",
+        max_requests=limit_config["requests"],
+        window_seconds=limit_config["window_seconds"],
+    )
+    
+    # Add rate limit headers
+    response.headers["X-RateLimit-Limit"] = str(limit_config["requests"])
+    response.headers["X-RateLimit-Remaining"] = str(max(0, limit_config["requests"] - current_count))
+    response.headers["X-RateLimit-Reset"] = str(retry_after)
+    
+    if not allowed:
+        response.headers["Retry-After"] = str(retry_after)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
+        )
+    
     users = service.search_users(q, current_user["user_id"])
     return FriendsListResponse(
         items=[FriendItem(
@@ -81,7 +127,6 @@ async def search_users(
             created_at="",
         ) for user in users],
         total=len(users),
-
     )
 
 
