@@ -1,5 +1,8 @@
 import '@testing-library/jest-native/extend-expect';
 
+// Mock global fetch
+global.fetch = jest.fn();
+
 // Mock React Navigation
 jest.mock("@react-navigation/native", () => ({
   ...jest.requireActual("@react-navigation/native"),
@@ -57,3 +60,10 @@ jest.mock("expo-file-system", () => ({
   documentDirectory: "/mock/",
 }));
 
+// Silence console warnings during tests
+const originalConsole = { ...console };
+global.console = {
+  ...console,
+  warn: jest.fn(),
+  error: jest.fn(),
+};
