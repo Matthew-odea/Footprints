@@ -20,6 +20,9 @@
       "node": "20.19.4",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://9fal46jhxe.execute-api.us-east-1.amazonaws.com"
+      },
+      "android": {
+        "buildType": "apk"
       }
     }
   }
