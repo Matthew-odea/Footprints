@@ -25,10 +25,11 @@ class AddFriendRequest(BaseModel):
 class FriendItem(BaseModel):
     """Friend in friend list."""
 
+    request_id: Optional[str] = Field(None, description="ID of the friend request")
     friend_id: str = Field(..., description="ID of friend user")
     username: str = Field(..., description="Username of friend")
     display_name: str = Field(..., description="Display name of friend")
-    status: str = Field(default="accepted", description="Friendship status")
+    status: str = Field(..., description="Friendship status")
     created_at: str = Field(..., description="When friendship was created")
     requested_by: Optional[str] = Field(None, description="User ID who sent the request")
 

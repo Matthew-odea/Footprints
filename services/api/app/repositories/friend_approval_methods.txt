@@ -1,0 +1,21 @@
+# New abstract methods to add after search_users:
+
+    @abstractmethod
+    def get_incoming_requests(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of incoming friend requests for a user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_outgoing_requests(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of outgoing friend requests from a user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def accept_friend_request(self, user_id: str, request_id: str) -> dict[str, Any]:
+        """Accept an incoming friend request."""
+        raise Not ImplementedError
+
+    @abstractmethod
+    def reject_friend_request(self, user_id: str, request_id: str) -> None:
+        """Reject an incoming friend request."""
+        raise NotImplementedError

@@ -7,6 +7,7 @@ class FeedItem(BaseModel):
     """A single feed item (completion from a friend or public)."""
     completion_id: str
     user_id: str
+    user_username: str
     user_display_name: str
     prompt_id: str
     prompt_title: str
@@ -20,4 +21,5 @@ class FeedItem(BaseModel):
 class FeedResponse(BaseModel):
     """Response for feed endpoint."""
     items: list[FeedItem]
+    total: int
     next_cursor: str | None = None

@@ -44,3 +44,25 @@ class FriendService:
             raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
 
         return self.store.search_users(query, exclude_user_id=user_id)
+
+    def get_incoming_requests(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of incoming friend requests."""
+        return self.store.get_incoming_requests(user_id)
+
+    def get_outgoing_requests(self, user_id: str) -> list[dict[str, Any]]:
+        """Get list of outgoing friend requests."""
+        return self.store.get_outgoing_requests(user_id)
+
+    def accept_friend_request(self, user_id: str, request_id: str) -> dict[str, Any]:
+        """Accept an incoming friend request."""
+        try:
+            return self.store.accept_friend_request(user_id, request_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    def reject_friend_request(self, user_id: str, request_id: str) -> None:
+        """Reject an incoming friend request."""
+        try:
+            self.store.reject_friend_request(user_id, request_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))

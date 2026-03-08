@@ -25,9 +25,10 @@ async def get_feed(
     Supports pagination via cursor (opaque string).
     """
     user_id = current_user["user_id"]
-    items, next_cursor = store.get_feed(user_id, limit=limit, cursor=cursor, scope=scope)
+    items, next_cursor, total = store.get_feed(user_id, limit=limit, cursor=cursor, scope=scope)
     
     return FeedResponse(
         items=items,
+        total=total,
         next_cursor=next_cursor,
     )

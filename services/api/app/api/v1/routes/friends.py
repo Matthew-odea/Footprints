@@ -3,10 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.dependencies import get_current_user, get_friend_service
-from app.middleware.rate_limiter import get_rate_limiter, RATE_LIMITS, RateLimiter
+from app.middleware.rate_limiter import RATE_LIMITS, RateLimiter, get_rate_limiter
 from app.schemas.friends import (
+    AcceptFriendRequestResponse,
     AddFriendRequest,
     FriendItem,
+    FriendRequestItem,
+    FriendRequestsListResponse,
     FriendsListResponse,
     FriendStatusResponse,
 )
@@ -23,31 +26,26 @@ async def add_friend(
     service: FriendService = Depends(get_friend_service),
     limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> FriendItem:
-    """
-    Add a friend by username.
-    
-    Returns the new friendship details.
-    Rate limited to 5 requests per minute.
-    """
-    # Apply rate limiting
+    """Add a friend by username (creates pending friend request)."""
     limit_config = RATE_LIMITS["add_friend"]
     allowed, current_count, retry_after = limiter.check_rate_limit(
         key=f"add_friend:{current_user['user_id']}",
         max_requests=limit_config["requests"],
         window_seconds=limit_config["window_seconds"],
     )
-    
-    # Add rate limit headers
+
     response.headers["X-RateLimit-Limit"] = str(limit_config["requests"])
-    response.headers["X-RateLimit-Remaining"] = str(max(0, limit_config["requests"] - current_count))
-    
+    response.headers["X-RateLimit-Remaining"] = str(
+        max(0, limit_config["requests"] - current_count)
+    )
+
     if not allowed:
         response.headers["Retry-After"] = str(retry_after)
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
         )
-    
+
     result = service.add_friend(current_user["user_id"], request.username)
     return FriendItem(**result)
 
@@ -58,11 +56,7 @@ async def remove_friend(
     current_user: dict = Depends(get_current_user),
     service: FriendService = Depends(get_friend_service),
 ) -> None:
-    """
-    Remove a friend by ID.
-    
-    Returns 204 No Content on success.
-    """
+    """Remove a friend by ID."""
     service.remove_friend(current_user["user_id"], friend_id)
 
 
@@ -71,11 +65,7 @@ async def list_friends(
     current_user: dict = Depends(get_current_user),
     service: FriendService = Depends(get_friend_service),
 ) -> FriendsListResponse:
-    """
-    Get list of friends for current user.
-    
-    Returns all friends in accepted status.
-    """
+    """Get accepted friends for current user."""
     friends = service.get_friends(current_user["user_id"])
     return FriendsListResponse(
         items=[FriendItem(**friend) for friend in friends],
@@ -91,41 +81,39 @@ async def search_users(
     service: FriendService = Depends(get_friend_service),
     limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> FriendsListResponse:
-    """
-    Search for users to add as friends.
-    
-    Returns matching users by username or display name.
-    Rate limited to 10 requests per minute.
-    """
-    # Apply rate limiting
+    """Search for users by username or display name."""
     limit_config = RATE_LIMITS["search_users"]
     allowed, current_count, retry_after = limiter.check_rate_limit(
         key=f"search:{current_user['user_id']}",
         max_requests=limit_config["requests"],
         window_seconds=limit_config["window_seconds"],
     )
-    
-    # Add rate limit headers
+
     response.headers["X-RateLimit-Limit"] = str(limit_config["requests"])
-    response.headers["X-RateLimit-Remaining"] = str(max(0, limit_config["requests"] - current_count))
+    response.headers["X-RateLimit-Remaining"] = str(
+        max(0, limit_config["requests"] - current_count)
+    )
     response.headers["X-RateLimit-Reset"] = str(retry_after)
-    
+
     if not allowed:
         response.headers["Retry-After"] = str(retry_after)
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
         )
-    
+
     users = service.search_users(q, current_user["user_id"])
     return FriendsListResponse(
-        items=[FriendItem(
-            friend_id=user["user_id"],
-            username=user["username"],
-            display_name=user["display_name"],
-            status="not_friend",
-            created_at="",
-        ) for user in users],
+        items=[
+            FriendItem(
+                friend_id=user["user_id"],
+                username=user["username"],
+                display_name=user["display_name"],
+                status="not_friend",
+                created_at="",
+            )
+            for user in users
+        ],
         total=len(users),
     )
 
@@ -136,11 +124,7 @@ async def get_friend(
     current_user: dict = Depends(get_current_user),
     service: FriendService = Depends(get_friend_service),
 ) -> FriendStatusResponse:
-    """
-    Get friendship status with a specific user.
-    
-    Returns friendship details including status.
-    """
+    """Get friendship status with a specific user."""
     friendship = service.get_friend_status(current_user["user_id"], friend_id)
     return FriendStatusResponse(
         friend_id=friendship["friend_id"],
@@ -148,5 +132,77 @@ async def get_friend(
         display_name=friendship["display_name"],
         status=friendship["status"],
         created_at=friendship["created_at"],
-        mutual_friends=0,  # TODO: Calculate mutual friends
     )
+
+
+@router.get("/requests/incoming", response_model=FriendRequestsListResponse)
+async def get_incoming_requests(
+    current_user: dict = Depends(get_current_user),
+    service: FriendService = Depends(get_friend_service),
+) -> FriendRequestsListResponse:
+    """Get incoming pending friend requests."""
+    requests = service.get_incoming_requests(current_user["user_id"])
+    return FriendRequestsListResponse(
+        items=[
+            FriendRequestItem(
+                request_id=req["request_id"],
+                user_id=req["friend_id"],
+                username=req["username"],
+                display_name=req["display_name"],
+                created_at=req["created_at"],
+                direction="incoming",
+            )
+            for req in requests
+        ],
+        total=len(requests),
+    )
+
+
+@router.get("/requests/outgoing", response_model=FriendRequestsListResponse)
+async def get_outgoing_requests(
+    current_user: dict = Depends(get_current_user),
+    service: FriendService = Depends(get_friend_service),
+) -> FriendRequestsListResponse:
+    """Get outgoing pending friend requests."""
+    requests = service.get_outgoing_requests(current_user["user_id"])
+    return FriendRequestsListResponse(
+        items=[
+            FriendRequestItem(
+                request_id=req["request_id"],
+                user_id=req["friend_id"],
+                username=req["username"],
+                display_name=req["display_name"],
+                created_at=req["created_at"],
+                direction="outgoing",
+            )
+            for req in requests
+        ],
+        total=len(requests),
+    )
+
+
+@router.post("/requests/{request_id}/accept", response_model=AcceptFriendRequestResponse)
+async def accept_friend_request(
+    request_id: str,
+    current_user: dict = Depends(get_current_user),
+    service: FriendService = Depends(get_friend_service),
+) -> AcceptFriendRequestResponse:
+    """Accept an incoming friend request."""
+    friendship = service.accept_friend_request(current_user["user_id"], request_id)
+    return AcceptFriendRequestResponse(
+        friend_id=friendship["friend_id"],
+        username=friendship["username"],
+        display_name=friendship["display_name"],
+        status=friendship["status"],
+        accepted_at=friendship.get("accepted_at", ""),
+    )
+
+
+@router.post("/requests/{request_id}/reject", status_code=204)
+async def reject_friend_request(
+    request_id: str,
+    current_user: dict = Depends(get_current_user),
+    service: FriendService = Depends(get_friend_service),
+) -> None:
+    """Reject an incoming friend request."""
+    service.reject_friend_request(current_user["user_id"], request_id)
