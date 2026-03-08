@@ -2,8 +2,24 @@
 
 **Sprint Dates:** March 22 - April 5, 2026  
 **Theme:** From Feed to Archive  
+**Status:** ✅ **PART DONE** (3 of 5 epics complete; 2 deferred to post-Sprint-4)  
 **Goal:** Implement calendar view, entry details, favorites, and basic shared experiments  
 **Definition of Done:** All 5 epics shipped with >90% test coverage  
+
+---
+
+## Sprint 3 Status Summary
+
+✅ **Completed Epics:**
+- Epic 1: Archive Calendar & Gallery Views ✅ Shipped (commit ed0830d)
+- Epic 2: Entry Detail Panel + Comments ✅ Shipped (commit 4ce2bd6)
+- Epic 3: Favorites/Bookmarking System ✅ Shipped (commit 24381c2)
+
+🟡 **Deferred to Post-Sprint-4:**
+- Epic 4: Shared Experiments (Challenges) — Planned, not started
+- Epic 5: Weekly Insights — Planned, not started
+
+**Next:** Sprint 4 focuses on design system & pattern library. Return to Epic 4-5 after establishing unified UI foundation.
 
 ---
 
