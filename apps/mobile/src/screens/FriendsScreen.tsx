@@ -1,13 +1,9 @@
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     FlatList,
-    Pressable,
     SafeAreaView,
     StyleSheet,
-    Text,
-    View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -24,6 +20,8 @@ import {
 } from "../services/friends";
 import { useAuth } from "../state/AuthContext";
 import { FriendItem, FriendRequestItem } from "../types/api";
+import { Title, Heading, Body, Button, Card, VStack, HStack, LoadingSpinner, EmptyState, Badge } from "../components";
+import { theme } from "../theme";
 
 export function FriendsScreen() {
     const { token } = useAuth();
@@ -149,99 +147,124 @@ export function FriendsScreen() {
         return searchUsers(token, query);
     };
 
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <LoadingSpinner message="Loading friends..." />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Friends</Text>
-                <Pressable style={styles.addAction} onPress={() => setModalVisible(true)}>
-                    <Text style={styles.addActionText}>Add Friend</Text>
-                </Pressable>
-            </View>
+            <VStack space="lg" style={{ flex: 1 }}>
+                {/* Header */}
+                <HStack justify="space-between" align="center">
+                    <Title>Friends</Title>
+                    <Button
+                        label="Add Friend"
+                        onPress={() => setModalVisible(true)}
+                        size="sm"
+                        variant="primary"
+                    />
+                </HStack>
 
-            {loading ? <ActivityIndicator style={styles.loader} /> : null}
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+                {/* Error Message */}
+                {error ? <Body style={{ color: theme.colors.error }}>{error}</Body> : null}
 
-            {!loading && friends.length === 0 ? (
-                <View style={styles.emptyWrap}>
-                    <Text style={styles.emptyTitle}>No friends yet</Text>
-                    <Text style={styles.emptyText}>Add a friend to start sharing activity.</Text>
-                </View>
-            ) : null}
-
-            {incomingRequests.length > 0 ? (
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Incoming Requests</Text>
-                    {incomingRequests.map((request) => {
-                        const busy = requestActionId === request.request_id;
-                        return (
-                            <View key={request.request_id} style={styles.card}>
-                                <View style={styles.cardTextWrap}>
-                                    <Text style={styles.name}>{request.display_name}</Text>
-                                    <Text style={styles.username}>@{request.username}</Text>
-                                </View>
-                                <View style={styles.requestActions}>
-                                    <Pressable
-                                        style={[styles.acceptButton, busy ? styles.removeButtonDisabled : null]}
-                                        disabled={busy}
-                                        onPress={() => {
-                                            void handleAcceptRequest(request);
-                                        }}
-                                    >
-                                        <Text style={styles.acceptButtonText}>Accept</Text>
-                                    </Pressable>
-                                    <Pressable
-                                        style={[styles.removeButton, busy ? styles.removeButtonDisabled : null]}
-                                        disabled={busy}
-                                        onPress={() => {
-                                            void handleRejectRequest(request);
-                                        }}
-                                    >
-                                        <Text style={styles.removeButtonText}>Reject</Text>
-                                    </Pressable>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </View>
-            ) : null}
-
-            {outgoingRequests.length > 0 ? (
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Outgoing Requests</Text>
-                    {outgoingRequests.map((request) => (
-                        <View key={request.request_id} style={styles.card}>
-                            <View style={styles.cardTextWrap}>
-                                <Text style={styles.name}>{request.display_name}</Text>
-                                <Text style={styles.username}>@{request.username}</Text>
-                            </View>
-                            <View style={styles.pendingPill}>
-                                <Text style={styles.pendingPillText}>Pending</Text>
-                            </View>
-                        </View>
-                    ))}
-                </View>
-            ) : null}
-
-            <FlatList
-                data={friends}
-                keyExtractor={(item) => item.friend_id}
-                contentContainerStyle={styles.list}
-                renderItem={({ item }) => (
-                    <View style={styles.card}>
-                        <View style={styles.cardTextWrap}>
-                            <Text style={styles.name}>{item.display_name}</Text>
-                            <Text style={styles.username}>@{item.username}</Text>
-                        </View>
-                        <Pressable
-                            style={[styles.removeButton, saving ? styles.removeButtonDisabled : null]}
-                            disabled={saving}
-                            onPress={() => handleRemove(item)}
-                        >
-                            <Text style={styles.removeButtonText}>Remove</Text>
-                        </Pressable>
-                    </View>
+                {/* Incoming Requests Section */}
+                {incomingRequests.length > 0 && (
+                    <VStack space="sm">
+                        <Heading>Incoming Requests</Heading>
+                        {incomingRequests.map((request) => {
+                            const busy = requestActionId === request.request_id;
+                            return (
+                                <Card key={request.request_id} padding="md">
+                                    <HStack justify="space-between" align="center">
+                                        <VStack space="xs">
+                                            <Heading size="sm">{request.display_name}</Heading>
+                                            <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                                                @{request.username}
+                                            </Body>
+                                        </VStack>
+                                        <HStack space="sm">
+                                            <Button
+                                                label="Accept"
+                                                onPress={() => handleAcceptRequest(request)}
+                                                disabled={busy}
+                                                variant="primary"
+                                                size="sm"
+                                            />
+                                            <Button
+                                                label="Reject"
+                                                onPress={() => handleRejectRequest(request)}
+                                                disabled={busy}
+                                                variant="outline"
+                                                size="sm"
+                                            />
+                                        </HStack>
+                                    </HStack>
+                                </Card>
+                            );
+                        })}
+                    </VStack>
                 )}
-            />
+
+                {/* Outgoing Requests Section */}
+                {outgoingRequests.length > 0 && (
+                    <VStack space="sm">
+                        <Heading>Outgoing Requests</Heading>
+                        {outgoingRequests.map((request) => (
+                            <Card key={request.request_id} padding="md">
+                                <HStack justify="space-between" align="center">
+                                    <VStack space="xs">
+                                        <Heading size="sm">{request.display_name}</Heading>
+                                        <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                                            @{request.username}
+                                        </Body>
+                                    </VStack>
+                                    <Badge label="Pending" />
+                                </HStack>
+                            </Card>
+                        ))}
+                    </VStack>
+                )}
+
+                {/* Friends List */}
+                {friends.length === 0 && incomingRequests.length === 0 ? (
+                    <EmptyState
+                        icon="👋"
+                        title="No friends yet"
+                        subtitle="Add a friend to start sharing activity."
+                    />
+                ) : (
+                    <FlatList
+                        data={friends}
+                        keyExtractor={(item) => item.friend_id}
+                        scrollEnabled={false}
+                        contentContainerStyle={styles.list}
+                        renderItem={({ item }) => (
+                            <Card padding="md">
+                                <HStack justify="space-between" align="center">
+                                    <VStack space="xs">
+                                        <Heading size="sm">{item.display_name}</Heading>
+                                        <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                                            @{item.username}
+                                        </Body>
+                                    </VStack>
+                                    <Button
+                                        label="Remove"
+                                        onPress={() => handleRemove(item)}
+                                        disabled={saving}
+                                        variant="outline"
+                                        size="sm"
+                                    />
+                                </HStack>
+                            </Card>
+                        )}
+                    />
+                )}
+            </VStack>
 
             <AddFriendModal
                 visible={modalVisible}
@@ -258,115 +281,11 @@ export function FriendsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
-        gap: 10,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: "700",
-    },
-    addAction: {
-        backgroundColor: "#007AFF",
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-    },
-    addActionText: {
-        color: "#fff",
-        fontWeight: "700",
-    },
-    loader: {
-        marginTop: 8,
-    },
-    error: {
-        color: "crimson",
-        fontSize: 13,
-    },
-    emptyWrap: {
-        paddingVertical: 20,
-        alignItems: "center",
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: "700",
-    },
-    emptyText: {
-        color: "#666",
-        marginTop: 6,
-    },
-    section: {
-        gap: 8,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: "700",
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
     },
     list: {
-        paddingVertical: 8,
-        gap: 10,
-    },
-    card: {
-        borderWidth: 1,
-        borderColor: "#ddd",
-        borderRadius: 8,
-        padding: 12,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    cardTextWrap: {
-        gap: 2,
-    },
-    name: {
-        fontWeight: "700",
-    },
-    username: {
-        color: "#666",
-    },
-    removeButton: {
-        borderWidth: 1,
-        borderColor: "crimson",
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    removeButtonDisabled: {
-        opacity: 0.6,
-    },
-    requestActions: {
-        flexDirection: "row",
-        gap: 8,
-    },
-    acceptButton: {
-        borderWidth: 1,
-        borderColor: "#1E8E3E",
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    acceptButtonText: {
-        color: "#1E8E3E",
-        fontWeight: "700",
-    },
-    pendingPill: {
-        borderWidth: 1,
-        borderColor: "#888",
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    pendingPillText: {
-        color: "#666",
-        fontWeight: "700",
-        fontSize: 12,
-    },
-    removeButtonText: {
-        color: "crimson",
-        fontWeight: "700",
+        gap: theme.spacing.md,
     },
 });

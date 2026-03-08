@@ -1,20 +1,19 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
-    ActivityIndicator,
     FlatList,
     Image,
     PanResponder,
-    Pressable,
     RefreshControl,
     SafeAreaView,
     StyleSheet,
-    Text,
     View,
 } from "react-native";
 
 import { getArchiveCompletions, getFavoriteCompletions } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { CompletionItem } from "../types/api";
+import { Title, Heading, Body, Button, Card, VStack, HStack, LoadingSpinner, EmptyState } from "../components";
+import { theme } from "../theme";
 
 type ViewMode = "calendar" | "timeline" | "favorites";
 
@@ -226,84 +225,85 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.headerRow}>
-                <Text style={styles.title}>Archive</Text>
-                <View style={styles.segmentedControl}>
-                    <Pressable
-                        style={[styles.segmentButton, viewMode === "calendar" && styles.segmentButtonActive]}
+            {/* Header + View Mode Toggle */}
+            <VStack space="md" style={styles.headerRow}>
+                <Title>Archive</Title>
+                <HStack space="sm">
+                    <Button
+                        label="Calendar"
                         onPress={() => setViewMode("calendar")}
-                    >
-                        <Text style={[styles.segmentText, viewMode === "calendar" && styles.segmentTextActive]}>
-                            Calendar
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        style={[styles.segmentButton, viewMode === "timeline" && styles.segmentButtonActive]}
+                        variant={viewMode === "calendar" ? "primary" : "outline"}
+                        flex={1}
+                        size="sm"
+                    />
+                    <Button
+                        label="Timeline"
                         onPress={() => setViewMode("timeline")}
-                    >
-                        <Text style={[styles.segmentText, viewMode === "timeline" && styles.segmentTextActive]}>
-                            Timeline
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        style={[styles.segmentButton, viewMode === "favorites" && styles.segmentButtonActive]}
+                        variant={viewMode === "timeline" ? "primary" : "outline"}
+                        flex={1}
+                        size="sm"
+                    />
+                    <Button
+                        label="Favorites"
                         onPress={() => setViewMode("favorites")}
-                    >
-                        <Text style={[styles.segmentText, viewMode === "favorites" && styles.segmentTextActive]}>
-                            Favorites
-                        </Text>
-                    </Pressable>
-                </View>
-            </View>
+                        variant={viewMode === "favorites" ? "primary" : "outline"}
+                        flex={1}
+                        size="sm"
+                    />
+                </HStack>
+            </VStack>
 
-            {loading ? <ActivityIndicator style={styles.loading} /> : null}
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {/* Loading State */}
+            {loading ? <LoadingSpinner message="Loading..." /> : null}
 
+            {/* Error State */}
+            {error ? <Body style={{ color: theme.colors.error, marginHorizontal: theme.spacing.base }}>{error}</Body> : null}
+
+            {/* Calendar View */}
             {viewMode === "calendar" ? (
                 <View style={styles.calendarContainer} {...monthSwipeResponder.panHandlers}>
-                    <View style={styles.monthNavRow}>
-                        <Pressable style={styles.monthNavButton} onPress={onPreviousMonth}>
-                            <Text style={styles.monthNavText}>‹</Text>
-                        </Pressable>
-                        <Text style={styles.monthLabel}>{monthLabel(currentMonth)}</Text>
-                        <Pressable style={styles.monthNavButton} onPress={onNextMonth}>
-                            <Text style={styles.monthNavText}>›</Text>
-                        </Pressable>
-                    </View>
+                    {/* Month Navigation */}
+                    <HStack justify="space-between" align="center" style={styles.monthNavRow}>
+                        <Button label="‹" onPress={onPreviousMonth} variant="outline" size="sm" />
+                        <Body style={styles.monthLabel}>{monthLabel(currentMonth)}</Body>
+                        <Button label="›" onPress={onNextMonth} variant="outline" size="sm" />
+                    </HStack>
 
-                    <View style={styles.dayHeaderRow}>
+                    {/* Day Headers */}
+                    <HStack style={styles.dayHeaderRow}>
                         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                            <Text key={day} style={styles.dayHeaderText}>{day}</Text>
+                            <Body key={day} style={styles.dayHeaderText}>
+                                {day}
+                            </Body>
                         ))}
-                    </View>
+                    </HStack>
 
+                    {/* Calendar Grid */}
                     <View style={styles.grid}>
                         {monthCells.map((cell) => {
                             const completion = dateToCompletion.get(cell.dateKey);
                             const isSelected = selectedDate === cell.dateKey;
                             return (
-                                <Pressable
+                                <Button
                                     key={cell.dateKey}
+                                    label={completion?.photo_url ? "" : String(cell.date.getDate())}
                                     onPress={() => onCalendarDayPress(completion ? cell.dateKey : "")}
+                                    disabled={!completion}
+                                    variant={isSelected ? "primary" : "outline"}
                                     style={[
-                                        styles.cell,
+                                        styles.calendarCell,
                                         !cell.inCurrentMonth && styles.outsideCell,
-                                        isSelected && styles.selectedCell,
                                     ]}
                                 >
                                     {completion?.photo_url ? (
                                         <Image source={{ uri: completion.photo_url }} style={styles.thumbnail} />
                                     ) : null}
-                                    {!completion?.photo_url ? (
-                                        <Text style={[styles.cellText, !cell.inCurrentMonth && styles.outsideCellText]}>
-                                            {cell.date.getDate()}
-                                        </Text>
-                                    ) : null}
-                                </Pressable>
+                                </Button>
                             );
                         })}
                     </View>
 
+                    {/* Timeline List Below Calendar */}
                     <FlatList
                         ref={timelineListRef}
                         data={items}
@@ -318,54 +318,68 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
                             }, 100);
                         }}
                         renderItem={({ item }) => (
-                            <Pressable
+                            <Card
+                                padding="md"
                                 style={styles.timelineCard}
                                 onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
                             >
-                                <Text style={styles.timelineCardTitle}>{item.prompt_title}</Text>
-                                <Text>{item.date}</Text>
-                                <Text>{item.location}</Text>
-                                <Text>{item.note}</Text>
-                            </Pressable>
+                                <VStack space="sm">
+                                    <Heading>{item.prompt_title}</Heading>
+                                    <HStack space="md">
+                                        {item.date && <Body>📅 {item.date}</Body>}
+                                        {item.location && <Body>📍 {item.location}</Body>}
+                                    </HStack>
+                                    {item.note && <Body style={{ color: theme.colors.textSecondary }}>{item.note}</Body>}
+                                </VStack>
+                            </Card>
                         )}
                         ListEmptyComponent={
-                            <Text style={styles.emptyText}>
-                                No entries in this month
-                            </Text>
+                            <EmptyState
+                                icon="📭"
+                                title="No entries this month"
+                                subtitle="No completions recorded in this period."
+                            />
                         }
                         contentContainerStyle={styles.timelineList}
                     />
                 </View>
-            ) : (
+            ) : viewMode === "timeline" ? (
                 <FlatList
                     data={allTimelineItems}
                     keyExtractor={(item) => item.completion_id}
                     numColumns={2}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     renderItem={({ item }) => (
-                        <Pressable
+                        <Button
                             style={styles.galleryCell}
                             onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
+                            variant="ghost"
                         >
                             {item.photo_url ? (
                                 <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
                             ) : (
                                 <View style={styles.galleryImageFallback}>
-                                    <Text style={styles.galleryFallbackText}>No Photo</Text>
+                                    <Body style={{ color: theme.colors.textSecondary }}>No Photo</Body>
                                 </View>
                             )}
                             <View style={styles.galleryMeta}>
-                                <Text style={styles.galleryDate}>{item.date}</Text>
-                                {item.category ? <Text style={styles.galleryCategory}>{item.category}</Text> : null}
-                                <Text style={styles.galleryPrompt} numberOfLines={1}>{item.prompt_title}</Text>
+                                <Body style={styles.galleryDate}>{item.date}</Body>
+                                {item.category ? <Body style={styles.galleryCategory}>{item.category}</Body> : null}
+                                <Body numberOfLines={1} style={styles.galleryPrompt}>{item.prompt_title}</Body>
                             </View>
-                        </Pressable>
+                        </Button>
                     )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>No timeline items yet</Text>}
+                    ListEmptyComponent={
+                        <EmptyState
+                            icon="📸"
+                            title="No timeline items yet"
+                            subtitle="Your completions will appear here."
+                        />
+                    }
                     contentContainerStyle={styles.galleryList}
                     onEndReachedThreshold={0.6}
                     onEndReached={loadMoreTimeline}
-                    ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footerLoader} /> : null}
+                    ListFooterComponent={loadingMore ? <LoadingSpinner message="" /> : null}
                 />
             ) : viewMode === "favorites" ? (
                 <FlatList
@@ -374,29 +388,31 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
                     numColumns={2}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     renderItem={({ item }) => (
-                        <Pressable
+                        <Button
                             style={styles.galleryCell}
                             onPress={() => navigation.navigate('EntryDetail', { completionId: item.completion_id })}
+                            variant="ghost"
                         >
                             {item.photo_url ? (
                                 <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
                             ) : (
                                 <View style={styles.galleryImageFallback}>
-                                    <Text style={styles.galleryFallbackText}>No Photo</Text>
+                                    <Body style={{ color: theme.colors.textSecondary }}>No Photo</Body>
                                 </View>
                             )}
                             <View style={styles.galleryMeta}>
-                                <Text style={styles.galleryDate}>{item.date}</Text>
-                                {item.category ? <Text style={styles.galleryCategory}>{item.category}</Text> : null}
-                                <Text style={styles.galleryPrompt} numberOfLines={1}>{item.prompt_title}</Text>
+                                <Body style={styles.galleryDate}>{item.date}</Body>
+                                {item.category ? <Body style={styles.galleryCategory}>{item.category}</Body> : null}
+                                <Body numberOfLines={1} style={styles.galleryPrompt}>{item.prompt_title}</Body>
                             </View>
-                        </Pressable>
+                        </Button>
                     )}
                     ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No favorites yet</Text>
-                            <Text style={styles.emptySubtext}>Tap the heart icon on entries to save them here</Text>
-                        </View>
+                        <EmptyState
+                            icon="🤍"
+                            title="No favorites yet"
+                            subtitle="Tap the heart icon on entries to save them here."
+                        />
                     }
                     contentContainerStyle={styles.galleryList}
                 />
@@ -408,240 +424,106 @@ export function ArchiveScreen({ navigation }: ArchiveScreenProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FFF9F3",
+        backgroundColor: theme.colors.background,
     },
     headerRow: {
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 10,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: "700",
-        color: "#6D3D2A",
-        marginBottom: 10,
-    },
-    segmentedControl: {
-        flexDirection: "row",
-        backgroundColor: "#F2EDE7",
-        borderRadius: 10,
-        padding: 4,
-    },
-    segmentButton: {
-        flex: 1,
-        borderRadius: 8,
-        paddingVertical: 8,
-        alignItems: "center",
-    },
-    segmentButtonActive: {
-        backgroundColor: "#C56A47",
-    },
-    segmentText: {
-        color: "#6D3D2A",
-        fontWeight: "600",
-    },
-    segmentTextActive: {
-        color: "#FFF",
-    },
-    loading: {
-        marginTop: 10,
-    },
-    error: {
-        color: "#B00020",
-        paddingHorizontal: 16,
-        paddingVertical: 6,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
     calendarContainer: {
         flex: 1,
     },
     monthNavRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingBottom: 8,
-    },
-    monthNavButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#F2EDE7",
-    },
-    monthNavText: {
-        fontSize: 24,
-        color: "#6D3D2A",
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.md,
     },
     monthLabel: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#6D3D2A",
     },
     dayHeaderRow: {
         flexDirection: "row",
-        paddingHorizontal: 12,
-        marginBottom: 6,
+        paddingHorizontal: theme.spacing.base,
+        marginBottom: theme.spacing.sm,
     },
     dayHeaderText: {
         flex: 1,
         textAlign: "center",
-        fontSize: 12,
-        color: "#7E8A7B",
+        color: theme.colors.textSecondary,
     },
     grid: {
         flexDirection: "row",
         flexWrap: "wrap",
-        paddingHorizontal: 12,
-        rowGap: 6,
+        paddingHorizontal: theme.spacing.base,
+        gap: theme.spacing.sm,
+        paddingBottom: theme.spacing.md,
     },
-    cell: {
+    calendarCell: {
         width: "14.2857%",
         aspectRatio: 1,
-        borderRadius: 8,
-        backgroundColor: "#F2EDE7",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-    },
-    selectedCell: {
-        borderWidth: 2,
-        borderColor: "#C56A47",
     },
     outsideCell: {
-        opacity: 0.45,
-    },
-    cellText: {
-        color: "#6D3D2A",
-        fontSize: 12,
-    },
-    outsideCellText: {
-        color: "#A7A7A7",
+        opacity: 0.4,
     },
     thumbnail: {
         width: "100%",
         height: "100%",
+        borderRadius: theme.radius.base,
     },
     timelineList: {
-        padding: 12,
-        gap: 8,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.md,
+        gap: theme.spacing.md,
     },
     timelineCard: {
-        borderWidth: 1,
-        borderColor: "#E6DDD4",
-        borderRadius: 10,
-        backgroundColor: "#FFF",
-        padding: 10,
-        gap: 2,
-    },
-    timelineCardTitle: {
-        fontWeight: "700",
-        color: "#3A312C",
-    },
-    emptyText: {
-        textAlign: "center",
-        color: "#7E8A7B",
-        padding: 16,
-    },
-    emptyContainer: {
-        alignItems: "center",
-        padding: 32,
-    },
-    emptySubtext: {
-        textAlign: "center",
-        color: "#9CA3AF",
-        fontSize: 14,
-        marginTop: 8,
+        marginHorizontal: 0,
     },
     galleryList: {
-        padding: 8,
+        paddingHorizontal: theme.spacing.xs,
+        paddingVertical: theme.spacing.md,
     },
     galleryCell: {
         width: "50%",
-        padding: 6,
+        paddingHorizontal: theme.spacing.xs,
+        paddingVertical: theme.spacing.xs,
+        marginBottom: 0,
     },
     galleryImage: {
         width: "100%",
         aspectRatio: 1,
-        borderRadius: 8,
-        backgroundColor: "#EEE",
+        borderRadius: theme.radius.base,
+        backgroundColor: theme.colors.border,
     },
     galleryImageFallback: {
         width: "100%",
         aspectRatio: 1,
-        borderRadius: 8,
-        backgroundColor: "#E8E8E8",
+        borderRadius: theme.radius.base,
+        backgroundColor: theme.colors.border,
         alignItems: "center",
         justifyContent: "center",
     },
-    galleryFallbackText: {
-        color: "#777",
-        fontSize: 12,
-    },
     galleryMeta: {
         position: "absolute",
-        left: 10,
-        right: 10,
-        bottom: 10,
-        backgroundColor: "rgba(0,0,0,0.35)",
-        borderRadius: 6,
-        paddingHorizontal: 6,
-        paddingVertical: 4,
+        left: theme.spacing.sm,
+        right: theme.spacing.sm,
+        bottom: theme.spacing.sm,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        borderRadius: theme.radius.base,
+        paddingHorizontal: theme.spacing.xs,
+        paddingVertical: theme.spacing.xs,
     },
     galleryDate: {
         color: "#FFF",
-        fontSize: 11,
         fontWeight: "700",
     },
     galleryCategory: {
-        color: "#F5D6A0",
-        fontSize: 10,
+        color: theme.colors.secondary,
         fontWeight: "700",
         textTransform: "uppercase",
     },
     galleryPrompt: {
         color: "#FFF",
-        fontSize: 10,
-    },
-    footerLoader: {
-        paddingVertical: 16,
-    },
-    modalBackdrop: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.35)",
-        justifyContent: "center",
-        padding: 16,
-    },
-    modalCard: {
-        backgroundColor: "#FFF",
-        borderRadius: 12,
-        padding: 12,
-        gap: 8,
-    },
-    modalClose: {
-        alignSelf: "flex-end",
-    },
-    modalCloseText: {
-        color: "#C56A47",
-        fontWeight: "700",
-    },
-    modalImage: {
-        width: "100%",
-        aspectRatio: 1,
-        borderRadius: 8,
-        backgroundColor: "#EEE",
-    },
-    modalTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#3A312C",
-    },
-    modalText: {
-        color: "#3A312C",
-    },
-    modalCategory: {
-        color: "#C56A47",
-        fontWeight: "700",
-        textTransform: "capitalize",
     },
 });

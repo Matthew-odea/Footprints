@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Button, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
 import { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 
@@ -7,6 +7,8 @@ import { RootStackParamList } from "../navigation/types";
 import { getPromptById } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { Prompt } from "../types/api";
+import { Title, Heading, Body, Button, VStack, LoadingSpinner, EmptyState } from "../components";
+import { theme } from "../theme";
 
 type ScreenProps = NativeStackScreenProps<RootStackParamList, "PromptDetail">;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -31,28 +33,62 @@ export function PromptDetailScreen({ route }: ScreenProps) {
     }, [route.params.promptId, token]);
 
     if (loading) {
-        return <ActivityIndicator style={{ marginTop: 32 }} />;
+        return (
+            <SafeAreaView style={styles.container}>
+                <LoadingSpinner />
+            </SafeAreaView>
+        );
     }
 
     if (!prompt) {
-        return <Text style={{ marginTop: 32, textAlign: "center" }}>Prompt not found</Text>;
+        return (
+            <SafeAreaView style={styles.container}>
+                <EmptyState
+                    icon="🔍"
+                    title="Prompt not found"
+                    subtitle="This prompt may have been removed"
+                />
+            </SafeAreaView>
+        );
     }
 
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text style={styles.title}>{prompt.title}</Text>
-                <Text style={styles.description}>{prompt.description}</Text>
-                <Text style={styles.section}>How to get started</Text>
-                <View style={styles.list}>
-                    {prompt.guidance.map((item, index) => (
-                        <Text key={`${item}-${index}`} style={styles.listItem}>{`${index + 1}. ${item}`}</Text>
-                    ))}
-                </View>
-                <Button
-                    title="Upload completion"
-                    onPress={() => navigation.navigate("PromptUpload", { promptId: prompt.id })}
-                />
+                <VStack space="lg">
+                    <VStack space="sm">
+                        <Title color={theme.colors.primary}>{prompt.title}</Title>
+                        <Body color={theme.colors.textSecondary}>
+                            {prompt.description}
+                        </Body>
+                    </VStack>
+
+                    <VStack space="md">
+                        <Heading>How to get started</Heading>
+                        <VStack space="sm">
+                            {prompt.guidance.map((item, index) => (
+                                <Body key={`${item}-${index}`}>
+                                    <Body
+                                        style={{ fontWeight: "600" }}
+                                        color={theme.colors.primary}
+                                    >
+                                        {index + 1}.{" "}
+                                    </Body>
+                                    {item}
+                                </Body>
+                            ))}
+                        </VStack>
+                    </VStack>
+
+                    <Button
+                        label="Upload completion"
+                        onPress={() =>
+                            navigation.navigate("PromptUpload", { promptId: prompt.id })
+                        }
+                        variant="primary"
+                        size="lg"
+                    />
+                </VStack>
             </ScrollView>
         </SafeAreaView>
     );
@@ -61,27 +97,10 @@ export function PromptDetailScreen({ route }: ScreenProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
     },
     content: {
-        padding: 16,
-        gap: 12,
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: "700",
-    },
-    description: {
-        color: "#444",
-    },
-    section: {
-        fontWeight: "700",
-        marginTop: 8,
-    },
-    list: {
-        gap: 8,
-        marginBottom: 16,
-    },
-    listItem: {
-        color: "#222",
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
     },
 });

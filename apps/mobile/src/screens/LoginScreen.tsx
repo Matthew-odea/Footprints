@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, SafeAreaView, StyleSheet } from "react-native";
 
 import { login } from "../services/api";
 import { useAuth } from "../state/AuthContext";
+import { Title, Body, VStack, Input, Button } from "../components";
+import { theme } from "../theme";
 
 export function LoginScreen() {
     const { setToken } = useAuth();
@@ -24,26 +26,42 @@ export function LoginScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.inner}>
-                <Text style={styles.title}>Footprints</Text>
-                <Text style={styles.subtitle}>Minimal milestone build</Text>
+            <VStack space="lg" style={styles.inner}>
+                <VStack space="sm" align="center">
+                    <Title color={theme.colors.primary}>Footprints</Title>
+                    <Body color={theme.colors.textSecondary}>
+                        Minimal milestone build
+                    </Body>
+                </VStack>
 
-                <TextInput
-                    style={styles.input}
-                    placeholder="Username"
-                    autoCapitalize="none"
-                    value={username}
-                    onChangeText={setUsername}
+                <VStack space="md">
+                    <Input
+                        label="Username"
+                        placeholder="demo_user"
+                        autoCapitalize="none"
+                        value={username}
+                        onChangeText={setUsername}
+                        disabled={loading}
+                    />
+                    <Input
+                        label="Password"
+                        placeholder="password123"
+                        secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
+                        disabled={loading}
+                    />
+                </VStack>
+
+                <Button
+                    label={loading ? "Signing in..." : "Sign in"}
+                    onPress={onSubmit}
+                    disabled={loading}
+                    loading={loading}
+                    variant="primary"
+                    size="lg"
                 />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                />
-                <Button title={loading ? "Signing in..." : "Sign in"} onPress={onSubmit} disabled={loading} />
-            </View>
+            </VStack>
         </SafeAreaView>
     );
 }
@@ -52,23 +70,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: "center",
+        backgroundColor: theme.colors.background,
     },
     inner: {
-        padding: 20,
-        gap: 12,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: "700",
-    },
-    subtitle: {
-        color: "#666",
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        padding: 10,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.lg,
     },
 });

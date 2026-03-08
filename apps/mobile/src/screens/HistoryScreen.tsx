@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { FlatList, SafeAreaView, StyleSheet } from "react-native";
 
 import { getHistory } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { CompletionItem } from "../types/api";
+import { Title, Heading, BodySmall, Card, VStack, LoadingSpinner, EmptyState } from "../components";
+import { theme } from "../theme";
 
 export function HistoryScreen() {
     const { token } = useAuth();
@@ -23,23 +25,50 @@ export function HistoryScreen() {
         void run();
     }, [token]);
 
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <LoadingSpinner message="Loading history..." />
+            </SafeAreaView>
+        );
+    }
+
+    const renderItem = ({ item }: { item: CompletionItem }) => (
+        <Card padding="md" shadow="subtle">
+            <VStack space="sm">
+                <Heading>{item.prompt_title}</Heading>
+                <BodySmall color={theme.colors.textSecondary}>
+                    {item.date}
+                    {item.location && ` • ${item.location}`}
+                </BodySmall>
+                {item.note && (
+                    <BodySmall color={theme.colors.text}>{item.note}</BodySmall>
+                )}
+            </VStack>
+        </Card>
+    );
+
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>History</Text>
-            {loading ? <ActivityIndicator style={styles.loading} /> : null}
-            <FlatList<CompletionItem>
-                data={items}
-                keyExtractor={(item) => item.completion_id}
-                contentContainerStyle={styles.list}
-                renderItem={({ item }) => (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>{item.prompt_title}</Text>
-                        <Text>{item.date}</Text>
-                        <Text>{item.location}</Text>
-                        <Text>{item.note}</Text>
-                    </View>
-                )}
-            />
+            <VStack style={styles.header}>
+                <Title>History</Title>
+            </VStack>
+
+            {items.length === 0 ? (
+                <EmptyState
+                    icon="📚"
+                    title="No history yet"
+                    subtitle="Complete prompts to see your history"
+                />
+            ) : (
+                <FlatList<CompletionItem>
+                    data={items}
+                    keyExtractor={(item) => item.completion_id}
+                    contentContainerStyle={styles.list}
+                    renderItem={renderItem}
+                    scrollEnabled={false}
+                />
+            )}
         </SafeAreaView>
     );
 }
@@ -47,27 +76,17 @@ export function HistoryScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: "700",
-        padding: 16,
-    },
-    loading: {
-        marginTop: 12,
+    header: {
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
     list: {
-        padding: 16,
-        gap: 10,
-    },
-    card: {
-        borderWidth: 1,
-        borderColor: "#111",
-        borderRadius: 8,
-        padding: 12,
-        gap: 4,
-    },
-    cardTitle: {
-        fontWeight: "700",
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.lg,
+        gap: theme.spacing.md,
     },
 });

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, SafeAreaView, StyleSheet, Switch, Text, TextInput, View, Image, ActivityIndicator } from "react-native";
+import { Alert, SafeAreaView, StyleSheet, ScrollView, View, Image, Switch } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 
@@ -7,6 +7,8 @@ import { RootStackParamList } from "../navigation/types";
 import { createCompletion } from "../services/api";
 import { requestUploadUrl, uploadPhotoToS3 } from "../services/upload";
 import { useAuth } from "../state/AuthContext";
+import { Title, Label, Body, Button, VStack, HStack, Input, LoadingSpinner } from "../components";
+import { theme } from "../theme";
 
 type ScreenProps = NativeStackScreenProps<RootStackParamList, "PromptUpload">;
 
@@ -104,47 +106,91 @@ export function PromptUploadScreen({ route, navigation }: ScreenProps) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <Text style={styles.label}>Photo</Text>
-                <View style={styles.photoSection}>
-                    {photoUri ? (
-                        <View>
-                            <Image source={{ uri: photoUri }} style={styles.previewImage} />
-                            <Button title="Remove photo" onPress={() => setPhotoUri(null)} />
-                        </View>
-                    ) : (
-                        <View style={styles.photoButtons}>
-                            <Button title="📸 Take Photo" onPress={takePhoto} />
-                            <Button title="🖼️ Choose from Library" onPress={pickImage} />
-                        </View>
-                    )}
-                </View>
+            <ScrollView contentContainerStyle={styles.content}>
+                <VStack space="lg">
+                    <Title>Complete prompt</Title>
 
-                <Text style={styles.label}>Note</Text>
-                <TextInput
-                    style={[styles.input, styles.textarea]}
-                    multiline
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="What did you do?"
-                />
+                    {/* Photo Section */}
+                    <VStack space="sm">
+                        <Label>Photo</Label>
+                        {photoUri ? (
+                            <VStack space="md">
+                                <Image source={{ uri: photoUri }} style={styles.previewImage} />
+                                <Button
+                                    label="Remove photo"
+                                    onPress={() => setPhotoUri(null)}
+                                    variant="outline"
+                                    size="sm"
+                                />
+                            </VStack>
+                        ) : (
+                            <HStack space="sm">
+                                <Button
+                                    label="📸 Take Photo"
+                                    onPress={takePhoto}
+                                    variant="secondary"
+                                    flex={1}
+                                />
+                                <Button
+                                    label="🖼️ Choose"
+                                    onPress={pickImage}
+                                    variant="secondary"
+                                    flex={1}
+                                />
+                            </HStack>
+                        )}
+                    </VStack>
 
-                <Text style={styles.label}>Location</Text>
-                <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="City" />
+                    {/* Note Section */}
+                    <Input
+                        label="Note"
+                        placeholder="What did you do?"
+                        value={note}
+                        onChangeText={setNote}
+                        multiline
+                        disabled={loading || uploading}
+                    />
 
-                <View style={styles.switchRow}>
-                    <Text>Share with friends</Text>
-                    <Switch value={shareWithFriends} onValueChange={setShareWithFriends} />
-                </View>
+                    {/* Location Section */}
+                    <Input
+                        label="Location"
+                        placeholder="City, neighborhood, etc."
+                        value={location}
+                        onChangeText={setLocation}
+                        disabled={loading || uploading}
+                    />
 
-                {uploading && <ActivityIndicator size="large" color="#007AFF" />}
+                    {/* Share Toggle */}
+                    <HStack justify="space-between" align="center">
+                        <Body>Share with friends</Body>
+                        <Switch
+                            value={shareWithFriends}
+                            onValueChange={setShareWithFriends}
+                            disabled={loading || uploading}
+                            trackColor={{
+                                false: theme.colors.border,
+                                true: theme.colors.secondary,
+                            }}
+                            thumbColor={
+                                shareWithFriends ? theme.colors.primary : theme.colors.border
+                            }
+                        />
+                    </HStack>
 
-                <Button 
-                    title={loading ? "Submitting..." : "Submit completion"} 
-                    onPress={onSubmit} 
-                    disabled={loading || uploading} 
-                />
-            </View>
+                    {/* Loading Indicator */}
+                    {uploading && <LoadingSpinner message="Uploading photo..." fullScreen={false} />}
+
+                    {/* Submit Button */}
+                    <Button
+                        label={loading ? "Submitting..." : "Submit completion"}
+                        onPress={onSubmit}
+                        disabled={loading || uploading}
+                        loading={loading}
+                        variant="primary"
+                        size="lg"
+                    />
+                </VStack>
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -152,45 +198,16 @@ export function PromptUploadScreen({ route, navigation }: ScreenProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
     },
     content: {
-        padding: 16,
-        gap: 10,
-        flex: 1,
-    },
-    label: {
-        fontWeight: "700",
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        padding: 10,
-    },
-    textarea: {
-        minHeight: 90,
-        textAlignVertical: "top",
-    },
-    photoSection: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        padding: 12,
-        minHeight: 120,
-        justifyContent: "center",
-    },
-    photoButtons: {
-        gap: 8,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
     },
     previewImage: {
         width: "100%",
-        height: 200,
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    switchRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+        height: 250,
+        borderRadius: theme.radius.base,
+        marginBottom: theme.spacing.sm,
     },
 });

@@ -2,16 +2,15 @@ import React, { useEffect, useState } from "react";
 import {
     FlatList,
     StyleSheet,
-    Text,
-    View,
     Image,
-    ActivityIndicator,
     RefreshControl,
-    TouchableOpacity,
+    View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getFeed, FeedItem } from "../services/upload";
 import { useAuth } from "../state/AuthContext";
+import { Card, Body, Title, Heading, Button, VStack, HStack, LoadingSpinner, EmptyState } from "../components";
+import { theme } from "../theme";
 
 export function FeedScreen() {
     const { token } = useAuth();
@@ -81,45 +80,61 @@ export function FeedScreen() {
     };
 
     const renderItem = ({ item }: { item: FeedItem }) => (
-        <View style={styles.itemCard}>
-            <View style={styles.itemHeader}>
-                <Text style={styles.userName}>{item.user_display_name}</Text>
-                <Text style={styles.date}>{formatDate(item.created_at)}</Text>
-            </View>
+        <Card padding="md">
+            <VStack space="md">
+                {/* User and Date Header */}
+                <HStack justify="space-between" align="flex-start">
+                    <Title size="sm">{item.user_display_name}</Title>
+                    <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                        {formatDate(item.created_at)}
+                    </Body>
+                </HStack>
 
-            <Text style={styles.promptTitle}>{item.prompt_title}</Text>
+                {/* Prompt Title */}
+                <Heading size="sm">{item.prompt_title}</Heading>
 
-            {item.photo_url && (
-                <Image
-                    source={{ uri: item.photo_url }}
-                    style={styles.photo}
-                    onError={() => console.log("Image failed to load")}
-                />
-            )}
-
-            {item.note && <Text style={styles.note}>{item.note}</Text>}
-
-            <View style={styles.metaRow}>
-                {item.location && (
-                    <Text style={styles.meta}>📍 {item.location}</Text>
+                {/* Photo */}
+                {item.photo_url && (
+                    <Image
+                        source={{ uri: item.photo_url }}
+                        style={styles.photo}
+                        onError={() => console.log("Image failed to load")}
+                    />
                 )}
-                {item.date && <Text style={styles.meta}>📅 {item.date}</Text>}
-            </View>
-        </View>
+
+                {/* Note */}
+                {item.note && <Body>{item.note}</Body>}
+
+                {/* Metadata (Location + Date) */}
+                <HStack space="md">
+                    {item.location && (
+                        <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                            📍 {item.location}
+                        </Body>
+                    )}
+                    {item.date && (
+                        <Body size="sm" style={{ color: theme.colors.textSecondary }}>
+                            📅 {item.date}
+                        </Body>
+                    )}
+                </HStack>
+            </VStack>
+        </Card>
     );
 
     const renderEmpty = () => (
-        <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No activity yet</Text>
-            <Text style={styles.emptySubtext}>Check back soon for updates from your friends!</Text>
-        </View>
+        <EmptyState
+            icon="📱"
+            title="No activity yet"
+            subtitle="Check back soon for updates from your friends!"
+        />
     );
 
     const renderFooter = () => {
         if (!loadingMore) return null;
         return (
             <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color="#007AFF" />
+                <LoadingSpinner message="" />
             </View>
         );
     };
@@ -127,7 +142,7 @@ export function FeedScreen() {
     if (loading && feedItems.length === 0) {
         return (
             <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <LoadingSpinner message="Loading feed..." />
             </View>
         );
     }
@@ -135,31 +150,39 @@ export function FeedScreen() {
     if (error && feedItems.length === 0) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-                    <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
+                <VStack space="lg" align="center">
+                    <Body style={{ color: theme.colors.error }}>{error}</Body>
+                    <Button
+                        label="Retry"
+                        onPress={onRefresh}
+                        variant="primary"
+                    />
+                </VStack>
             </View>
         );
     }
 
     return (
         <View style={styles.container}>
-            <View style={styles.toggleRow}>
-                <TouchableOpacity
-                    style={[styles.toggleButton, scope === "all" && styles.toggleButtonActive]}
+            {/* Scope Toggle */}
+            <HStack space="sm" style={styles.toggleRow}>
+                <Button
+                    label="All"
                     onPress={() => setScope("all")}
-                >
-                    <Text style={[styles.toggleText, scope === "all" && styles.toggleTextActive]}>All</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.toggleButton, scope === "friends" && styles.toggleButtonActive]}
+                    variant={scope === "all" ? "primary" : "outline"}
+                    flex={1}
+                    size="sm"
+                />
+                <Button
+                    label="Friends"
                     onPress={() => setScope("friends")}
-                >
-                    <Text style={[styles.toggleText, scope === "friends" && styles.toggleTextActive]}>Friends</Text>
-                </TouchableOpacity>
-            </View>
+                    variant={scope === "friends" ? "primary" : "outline"}
+                    flex={1}
+                    size="sm"
+                />
+            </HStack>
 
+            {/* Feed List */}
             <FlatList
                 data={feedItems}
                 renderItem={renderItem}
@@ -180,129 +203,31 @@ export function FeedScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
     },
     toggleRow: {
-        flexDirection: "row",
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingTop: 12,
-    },
-    toggleButton: {
-        borderWidth: 1,
-        borderColor: "#007AFF",
-        borderRadius: 20,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-    },
-    toggleButtonActive: {
-        backgroundColor: "#007AFF",
-    },
-    toggleText: {
-        color: "#007AFF",
-        fontWeight: "600",
-    },
-    toggleTextActive: {
-        color: "#fff",
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.sm,
     },
     centerContainer: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        padding: 16,
+        paddingHorizontal: theme.spacing.base,
     },
     listContent: {
-        padding: 12,
-        gap: 12,
-    },
-    itemCard: {
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        padding: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    itemHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 8,
-    },
-    userName: {
-        fontWeight: "700",
-        fontSize: 16,
-        color: "#000",
-    },
-    date: {
-        fontSize: 12,
-        color: "#666",
-    },
-    promptTitle: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#333",
-        marginBottom: 8,
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
+        gap: theme.spacing.md,
     },
     photo: {
         width: "100%",
         height: 200,
-        borderRadius: 8,
-        marginBottom: 8,
-        backgroundColor: "#f0f0f0",
-    },
-    note: {
-        fontSize: 14,
-        color: "#333",
-        lineHeight: 20,
-        marginBottom: 8,
-    },
-    metaRow: {
-        flexDirection: "row",
-        gap: 12,
-        flexWrap: "wrap",
-    },
-    meta: {
-        fontSize: 12,
-        color: "#666",
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 32,
-    },
-    emptyText: {
-        fontSize: 18,
-        fontWeight: "600",
-        color: "#666",
-        marginBottom: 8,
-        textAlign: "center",
-    },
-    emptySubtext: {
-        fontSize: 14,
-        color: "#999",
-        textAlign: "center",
-    },
-    errorText: {
-        fontSize: 14,
-        color: "#ff3b30",
-        textAlign: "center",
-        marginBottom: 16,
-    },
-    retryButton: {
-        backgroundColor: "#007AFF",
-        paddingHorizontal: 24,
-        paddingVertical: 10,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: 14,
+        borderRadius: theme.radius.base,
+        backgroundColor: theme.colors.border,
     },
     footerLoader: {
-        paddingVertical: 16,
+        paddingVertical: theme.spacing.lg,
         justifyContent: "center",
         alignItems: "center",
     },

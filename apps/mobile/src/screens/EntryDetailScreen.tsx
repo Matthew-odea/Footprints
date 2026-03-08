@@ -1,23 +1,19 @@
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Button,
     FlatList,
     Image,
     KeyboardAvoidingView,
     Platform,
-    Pressable,
     SafeAreaView,
-    ScrollView,
     StyleSheet,
-    Text,
-    TextInput,
     View,
 } from "react-native";
 
 import { addFavorite, createComment, deleteComment, getCompletionById, listComments, removeFavorite } from "../services/api";
 import { useAuth } from "../state/AuthContext";
 import { CommentItem, CompletionItem } from "../types/api";
+import { Title, Heading, Body, Label, Card, Button, VStack, HStack, Input, LoadingSpinner, EmptyState, Badge } from "../components";
+import { theme } from "../theme";
 
 interface EntryDetailScreenProps {
     route: {
@@ -127,7 +123,7 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color="#4F46E5" />
+                <LoadingSpinner message="Loading entry..." />
             </SafeAreaView>
         );
     }
@@ -135,7 +131,11 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
     if (!completion) {
         return (
             <SafeAreaView style={styles.container}>
-                <Text style={styles.errorText}>{error || "Entry not found"}</Text>
+                <EmptyState
+                    icon="🔍"
+                    title="Entry not found"
+                    subtitle={error || "This entry may have been deleted."}
+                />
             </SafeAreaView>
         );
     }
@@ -147,27 +147,28 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
                     data={comments}
                     keyExtractor={(item) => item.comment_id}
                     renderItem={({ item }) => (
-                        <View style={styles.commentContainer}>
-                            <View style={styles.commentHeader}>
-                                <Text style={styles.commentAuthor}>{item.user_display_name}</Text>
-                                <Text style={styles.commentDate}>
-                                    {new Date(item.created_at).toLocaleDateString()}
-                                </Text>
-                            </View>
-                            <Text style={styles.commentText}>{item.text}</Text>
-                            <Pressable
-                                onPress={() => handleDeleteComment(item.comment_id)}
-                                disabled={deletingCommentId === item.comment_id}
-                            >
-                                <Text style={styles.deleteButton}>
-                                    {deletingCommentId === item.comment_id ? "Deleting..." : "Delete"}
-                                </Text>
-                            </Pressable>
-                        </View>
+                        <Card padding="md" style={styles.commentCard}>
+                            <VStack space="sm">
+                                <HStack justify="space-between" align="flex-start">
+                                    <Heading>{item.user_display_name}</Heading>
+                                    <Body style={{ color: theme.colors.textSecondary }}>
+                                        {new Date(item.created_at).toLocaleDateString()}
+                                    </Body>
+                                </HStack>
+                                <Body>{item.text}</Body>
+                                <Button
+                                    label={deletingCommentId === item.comment_id ? "Deleting..." : "Delete"}
+                                    onPress={() => handleDeleteComment(item.comment_id)}
+                                    disabled={deletingCommentId === item.comment_id}
+                                    variant="outline"
+                                    size="sm"
+                                />
+                            </VStack>
+                        </Card>
                     )}
                     ListHeaderComponent={
                         <View>
-                            {/* Entry photo */}
+                            {/* Entry Photo */}
                             {completion.photo_url && (
                                 <Image
                                     source={{ uri: completion.photo_url }}
@@ -175,74 +176,93 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
                                 />
                             )}
 
-                            {/* Entry metadata */}
-                            <View style={styles.metadata}>
-                                <View style={styles.titleRow}>
-                                    <Text style={styles.promptTitle}>{completion.prompt_title}</Text>
-                                    <Pressable onPress={handleToggleFavorite} disabled={togglingFavorite}>
-                                        <Text style={styles.heartIcon}>{isFavorited ? "❤️" : "🤍"}</Text>
-                                    </Pressable>
-                                </View>
+                            {/* Entry Metadata */}
+                            <Card padding="lg" style={styles.metadataCard}>
+                                <VStack space="lg">
+                                    {/* Title + Favorite Button */}
+                                    <HStack justify="space-between" align="flex-start">
+                                        <Title>{completion.prompt_title}</Title>
+                                        <Button
+                                            label={isFavorited ? "❤️" : "🤍"}
+                                            onPress={handleToggleFavorite}
+                                            disabled={togglingFavorite}
+                                            variant="ghost"
+                                            size="sm"
+                                        />
+                                    </HStack>
 
-                                <View style={styles.metadataRow}>
-                                    <Text style={styles.label}>Date:</Text>
-                                    <Text style={styles.value}>{completion.date}</Text>
-                                </View>
+                                    {/* Metadata Rows */}
+                                    <VStack space="md">
+                                        <HStack align="center">
+                                            <Label style={{ minWidth: 80 }}>Date:</Label>
+                                            <Body>{completion.date}</Body>
+                                        </HStack>
 
-                                {completion.category && (
-                                    <View style={styles.metadataRow}>
-                                        <Text style={styles.label}>Category:</Text>
-                                        <Text style={styles.categoryBadge}>{completion.category}</Text>
-                                    </View>
-                                )}
+                                        {completion.category && (
+                                            <HStack align="center">
+                                                <Label style={{ minWidth: 80 }}>Category:</Label>
+                                                <Badge label={completion.category} />
+                                            </HStack>
+                                        )}
 
-                                {completion.location && (
-                                    <View style={styles.metadataRow}>
-                                        <Text style={styles.label}>Location:</Text>
-                                        <Text style={styles.value}>{completion.location}</Text>
-                                    </View>
-                                )}
+                                        {completion.location && (
+                                            <HStack align="center">
+                                                <Label style={{ minWidth: 80 }}>Location:</Label>
+                                                <Body>{completion.location}</Body>
+                                            </HStack>
+                                        )}
+                                    </VStack>
 
-                                <Text style={styles.sectionTitle}>Notes</Text>
-                                <Text style={styles.note}>{completion.note}</Text>
+                                    {/* Notes Section */}
+                                    <VStack space="sm">
+                                        <Heading>Notes</Heading>
+                                        <Body style={{ color: theme.colors.textSecondary }}>
+                                            {completion.note}
+                                        </Body>
+                                    </VStack>
 
-                                <Text style={styles.sectionTitle}>
-                                    Comments ({comments.length})
-                                </Text>
-                            </View>
-                        }
+                                    {/* Comments Header */}
+                                    <Heading>Comments ({comments.length})</Heading>
+                                </VStack>
+                            </Card>
+                        </View>
+                    }
                     ListEmptyComponent={
                         !loading ? (
-                            <Text style={styles.emptyText}>No comments yet. Be the first!</Text>
+                            <View style={styles.emptyCommentsContainer}>
+                                <Body style={{ color: theme.colors.textSecondary }}>
+                                    No comments yet. Be the first!
+                                </Body>
+                            </View>
                         ) : null
                     }
                     contentContainerStyle={styles.listContent}
                 />
 
-                {/* Comment input */}
-                <View style={styles.inputContainer}>
-                    {error && <Text style={styles.errorText}>{error}</Text>}
-                    <View style={styles.commentInputRow}>
-                        <TextInput
-                            placeholder="Add a comment..."
-                            value={commentText}
-                            onChangeText={setCommentText}
-                            multiline
-                            numberOfLines={2}
-                            editable={!submittingComment}
-                            style={styles.commentInput}
-                        />
-                        <Pressable
-                            onPress={handleAddComment}
-                            disabled={submittingComment || !commentText.trim()}
-                            style={[styles.submitButton, (!commentText.trim() || submittingComment) && styles.submitButtonDisabled]}
-                        >
-                            <Text style={styles.submitButtonText}>
-                                {submittingComment ? "..." : "Post"}
-                            </Text>
-                        </Pressable>
-                    </View>
-                </View>
+                {/* Comment Input */}
+                <Card padding="md" style={styles.inputContainer}>
+                    <VStack space="sm">
+                        {error && <Body style={{ color: theme.colors.error }}>{error}</Body>}
+                        <HStack space="sm">
+                            <View style={{ flex: 1 }}>
+                                <Input
+                                    placeholder="Add a comment..."
+                                    value={commentText}
+                                    onChangeText={setCommentText}
+                                    multiline
+                                    disabled={submittingComment}
+                                />
+                            </View>
+                            <Button
+                                label={submittingComment ? "..." : "Post"}
+                                onPress={handleAddComment}
+                                disabled={submittingComment || !commentText.trim()}
+                                variant="primary"
+                                size="sm"
+                            />
+                        </HStack>
+                    </VStack>
+                </Card>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -251,7 +271,7 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F9FAFB",
+        backgroundColor: theme.colors.background,
     },
     flex: {
         flex: 1,
@@ -259,147 +279,28 @@ const styles = StyleSheet.create({
     photo: {
         width: "100%",
         height: 300,
-        backgroundColor: "#E5E7EB",
+        backgroundColor: theme.colors.border,
     },
-    metadata: {
-        padding: 16,
-        backgroundColor: "#FFF",
-        borderBottomWidth: 1,
-        borderBottomColor: "#E5E7EB",
+    metadataCard: {
+        marginHorizontal: theme.spacing.base,
+        marginVertical: theme.spacing.md,
     },
-    promptTitle: {
-        fontSize: 20,
-        fontWeight: "600",
-        marginBottom: 12,
-        color: "#1F2937",
-    },
-    titleRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 12,
-    },
-    heartIcon: {
-        fontSize: 24,
-        marginLeft: 12,
-    },
-    metadataRow: {
-        flexDirection: "row",
-        marginBottom: 8,
-        alignItems: "center",
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#6B7280",
-        width: 80,
-    },
-    value: {
-        fontSize: 14,
-        color: "#1F2937",
-        flex: 1,
-    },
-    categoryBadge: {
-        fontSize: 12,
-        fontWeight: "600",
-        backgroundColor: "#EEF2FF",
-        color: "#4F46E5",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        overflow: "hidden",
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: "600",
-        marginTop: 12,
-        marginBottom: 8,
-        color: "#1F2937",
-    },
-    note: {
-        fontSize: 14,
-        color: "#374151",
-        lineHeight: 20,
+    commentCard: {
+        marginHorizontal: theme.spacing.base,
+        marginVertical: theme.spacing.sm,
     },
     listContent: {
-        paddingBottom: 20,
+        paddingBottom: theme.spacing.lg,
     },
-    commentContainer: {
-        backgroundColor: "#FFF",
-        marginHorizontal: 12,
-        marginVertical: 8,
-        padding: 12,
-        borderRadius: 8,
-        borderTopWidth: 1,
-        borderTopColor: "#E5E7EB",
-    },
-    commentHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 8,
-    },
-    commentAuthor: {
-        fontWeight: "600",
-        fontSize: 14,
-        color: "#1F2937",
-    },
-    commentDate: {
-        fontSize: 12,
-        color: "#9CA3AF",
-    },
-    commentText: {
-        fontSize: 14,
-        color: "#374151",
-        marginBottom: 8,
-        lineHeight: 20,
-    },
-    deleteButton: {
-        fontSize: 12,
-        color: "#EF4444",
-        fontWeight: "500",
-    },
-    emptyText: {
-        textAlign: "center",
-        color: "#9CA3AF",
-        marginVertical: 20,
-    },
-    errorText: {
-        color: "#EF4444",
-        textAlign: "center",
-        padding: 12,
+    emptyCommentsContainer: {
+        paddingVertical: theme.spacing.lg,
+        alignItems: "center",
     },
     inputContainer: {
-        backgroundColor: "#FFF",
+        marginHorizontal: theme.spacing.base,
+        marginVertical: theme.spacing.base,
         borderTopWidth: 1,
-        borderTopColor: "#E5E7EB",
-        padding: 12,
-    },
-    commentInputRow: {
-        flexDirection: "row",
-        gap: 8,
-    },
-    commentInput: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
-        borderRadius: 8,
-        padding: 10,
-        fontSize: 14,
-        maxHeight: 80,
-    },
-    submitButton: {
-        backgroundColor: "#4F46E5",
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        justifyContent: "center",
-    },
-    submitButtonDisabled: {
-        backgroundColor: "#D1D5DB",
-    },
-    submitButtonText: {
-        color: "#FFF",
-        fontWeight: "600",
-        fontSize: 14,
+        borderTopColor: theme.colors.border,
+        paddingTop: theme.spacing.md,
     },
 });

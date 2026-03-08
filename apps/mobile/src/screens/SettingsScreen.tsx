@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Button, SafeAreaView, StyleSheet, Switch, Text, View } from "react-native";
+import { SafeAreaView, StyleSheet, Switch, ScrollView } from "react-native";
 
 import { getMe, updateSettings } from "../services/api";
 import { useAuth } from "../state/AuthContext";
+import { Title, Body, Label, Card, VStack, HStack, Button, LoadingSpinner, Divider } from "../components";
+import { theme } from "../theme";
 
 export function SettingsScreen() {
     const { token, setToken } = useAuth();
@@ -32,23 +34,63 @@ export function SettingsScreen() {
         await updateSettings(token, value);
     };
 
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <LoadingSpinner message="Loading settings..." />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>Settings</Text>
-            {loading ? <ActivityIndicator style={styles.loading} /> : null}
-            <View style={styles.card}>
-                <Text style={styles.label}>Signed in as</Text>
-                <Text style={styles.username}>{username || "-"}</Text>
-            </View>
-            <View style={styles.card}>
-                <View style={styles.row}>
-                    <Text>Share by default</Text>
-                    <Switch value={shareByDefault} onValueChange={onToggle} />
-                </View>
-            </View>
-            <View style={styles.logout}>
-                <Button title="Log out" onPress={() => setToken(null)} />
-            </View>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <VStack space="base" style={styles.header}>
+                    <Title>Settings</Title>
+                </VStack>
+
+                {/* Profile Section */}
+                <Card padding="md" shadow="subtle" style={styles.card}>
+                    <VStack space="md">
+                        <Label color={theme.colors.textSecondary}>Account</Label>
+                        <Divider />
+                        <VStack space="sm">
+                            <Body color={theme.colors.textSecondary}>Signed in as</Body>
+                            <Body color={theme.colors.text}>{username || "—"}</Body>
+                        </VStack>
+                    </VStack>
+                </Card>
+
+                {/* Privacy Section */}
+                <Card padding="md" shadow="subtle" style={styles.card}>
+                    <VStack space="md">
+                        <Label color={theme.colors.textSecondary}>Privacy</Label>
+                        <Divider />
+                        <HStack justify="space-between" align="center">
+                            <Body>Share entries by default</Body>
+                            <Switch
+                                value={shareByDefault}
+                                onValueChange={onToggle}
+                                trackColor={{
+                                    false: theme.colors.border,
+                                    true: theme.colors.secondary,
+                                }}
+                                thumbColor={
+                                    shareByDefault ? theme.colors.primary : theme.colors.border
+                                }
+                            />
+                        </HStack>
+                    </VStack>
+                </Card>
+
+                {/* Logout Section */}
+                <Button
+                    label="Log out"
+                    onPress={() => setToken(null)}
+                    variant="outline"
+                    style={styles.logoutButton}
+                />
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -56,35 +98,20 @@ export function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
-        gap: 12,
+        backgroundColor: theme.colors.background,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: "700",
+    scrollContent: {
+        paddingHorizontal: theme.spacing.base,
+        paddingVertical: theme.spacing.base,
+        gap: theme.spacing.lg,
     },
-    loading: {
-        marginTop: 8,
+    header: {
+        marginBottom: theme.spacing.md,
     },
     card: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        padding: 12,
-        gap: 6,
+        marginBottom: theme.spacing.md,
     },
-    label: {
-        color: "#666",
-    },
-    username: {
-        fontWeight: "700",
-    },
-    row: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    logout: {
-        marginTop: 12,
+    logoutButton: {
+        marginTop: theme.spacing.lg,
     },
 });
