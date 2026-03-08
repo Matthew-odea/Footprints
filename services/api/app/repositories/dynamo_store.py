@@ -209,6 +209,42 @@ class DynamoDataStore(DataStore):
             for item in items
         ]
 
+    def get_completions_by_date_range(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Get completions within a date range with pagination."""
+        # Query completions for user, filtered by date range
+        response = self.table.query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{user_id}") & Key("SK").begins_with("COMP#"),
+            FilterExpression=Attr("date").between(start_date, end_date),
+            ScanIndexForward=False,
+            Limit=offset + limit,  # Fetch enough items to skip offset and get limit
+        )
+        items = response.get("Items", [])
+        
+        # Transform items and apply offset
+        transformed = [
+            {
+                "completion_id": item["completionId"],
+                "prompt_id": item["promptId"],
+                "prompt_title": item["promptTitle"],
+                "note": item["note"],
+                "date": item["date"],
+                "location": item["location"],
+                "photo_url": item.get("photoUrl", ""),
+                "share_with_friends": item.get("shareWithFriends", True),
+            }
+            for item in items
+        ]
+        
+        # Apply pagination
+        return transformed[offset : offset + limit]
+
     def seed_prompts(self, prompts: list[dict[str, Any]]) -> None:
         with self.table.batch_writer() as batch:
             for prompt in prompts:

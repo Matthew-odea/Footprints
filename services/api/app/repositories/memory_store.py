@@ -68,6 +68,33 @@ class MemoryDataStore(DataStore):
         items = self.completions_by_user.get(user_id, [])
         return list(reversed(items))
 
+    def get_completions_by_date_range(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Get completions within a date range with pagination."""
+        items = self.completions_by_user.get(user_id, [])
+        
+        # Filter by date range (inclusive)
+        filtered = [
+            item for item in items
+            if start_date <= item.get("date", "") <= end_date
+        ]
+        
+        # Sort by date descending (most recent first)
+        sorted_items = sorted(filtered, key=lambda x: x.get("date", ""), reverse=True)
+        
+        # Apply pagination
+        start_idx = offset
+        end_idx = offset + limit
+        paginated = sorted_items[start_idx:end_idx]
+        
+        return paginated
+
     def get_feed(
         self,
         user_id: str,

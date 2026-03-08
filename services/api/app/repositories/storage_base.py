@@ -39,6 +39,29 @@ class DataStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_completions_by_date_range(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Get completions for a user within a date range (for archive/calendar view).
+        
+        Args:
+            user_id: User ID to fetch completions for
+            start_date: Start date (inclusive, format: "2026-03-01")
+            end_date: End date (inclusive, format: "2026-03-31")
+            limit: Max results per page
+            offset: Pagination offset
+            
+        Returns:
+            List of completions sorted by date descending
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def get_feed(
         self,
         user_id: str,

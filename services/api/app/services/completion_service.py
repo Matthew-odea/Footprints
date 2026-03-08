@@ -20,3 +20,10 @@ class CompletionService:
 
     def list_history(self, user_id: str) -> list[dict]:
         return self.store.list_history(user_id)
+
+    def get_completions_by_date_range(
+        self, user_id: str, start_date: str, end_date: str, limit: int = 100, offset: int = 0
+    ) -> list[dict]:
+        return self.store.get_completions_by_date_range(
+            user_id=user_id, start_date=start_date, end_date=end_date, limit=limit, offset=offset
+        )
