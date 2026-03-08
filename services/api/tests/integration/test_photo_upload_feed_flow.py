@@ -50,7 +50,6 @@ def test_request_upload_url_endpoint(client: TestClient) -> None:
     assert response_data["s3_key"].startswith("completions/")
 
 
-@pytest.mark.skip(reason="ValueError handling results in 500 - should use HTTPException instead")
 def test_request_upload_url_invalid_file_type(client: TestClient) -> None:
     """Test that invalid file types are rejected."""
     login_response = client.post(
@@ -64,15 +63,16 @@ def test_request_upload_url_invalid_file_type(client: TestClient) -> None:
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Request with invalid file type - raises ValueError which results in error
+    # Request with invalid file type
     upload_response = client.post(
         "/api/v1/uploads",
         headers=headers,
         json={"file_type": "video/mp4"},
     )
     
-    # Should fail (could be 500, 422, or 400 depending on error handling)
-    assert upload_response.status_code >= 400
+    # Should return 400 Bad Request
+    assert upload_response.status_code == 400
+    assert "Invalid file type" in upload_response.json()["detail"]
 
 
 def test_request_upload_url_requires_auth(client: TestClient) -> None:

@@ -1,6 +1,6 @@
 """Upload endpoints for requesting presigned S3 URLs."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.aws import get_s3_service, S3Service
 from app.dependencies import get_current_user
@@ -24,7 +24,10 @@ async def request_upload_url(
     # Validate file type
     valid_types = {"image/jpeg", "image/png", "image/webp"}
     if request.file_type not in valid_types:
-        raise ValueError(f"Invalid file type. Allowed: {valid_types}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(valid_types)}"
+        )
     
     # Extract file extension
     ext_map = {
